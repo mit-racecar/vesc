@@ -15,6 +15,7 @@
   <node pkg="vesc_driver" type="vesc_driver_node" name="$(arg node_name)"
         output="screen" launch-prefix="$(arg launch_prefix)" >
     <param name="port" value="$(arg port)" />
+    <param name="detect_mode" value="$(arg detect_mode)" />
   </node>
 
 </launch>
