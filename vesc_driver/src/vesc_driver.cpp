@@ -1,6 +1,7 @@
 // -*- mode:c++; fill-column: 100; -*-
 
 #include "vesc_driver/vesc_driver.h"
+#include "vesc_driver/datatypes.h"
 
 #include <cassert>
 #include <cmath>
@@ -38,6 +39,17 @@ VescDriver::VescDriver(ros::NodeHandle nh,
     ROS_FATAL("Failed to connect to the VESC, %s.", e.what());
     ros::shutdown();
     return;
+  }
+
+  std::string detect_mode;
+  private_nh.getParam("detect_mode", detect_mode);
+  // TODO: abstract this away into vesc_interface
+  if (detect_mode.compare("inductance") == 0) {
+    vesc_.setDetect(DISP_POS_MODE_INDUCTANCE);
+  }  else if (detect_mode.compare("observer") == 0) {
+    vesc_.setDetect(DISP_POS_MODE_OBSERVER);
+  } else if (detect_mode.compare("encoder") == 0) {
+    vesc_.setDetect(DISP_POS_MODE_ENCODER);
   }
 
   // create vesc state (telemetry) publisher

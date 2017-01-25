@@ -365,4 +365,18 @@ VescPacketSetServoPos::VescPacketSetServoPos(double servo_pos) :
   *(frame_->end() - 2) = static_cast<uint8_t>(crc & 0xFF);
 }
 
+/*------------------------------------------------------------------------------------------------*/
+
+VescPacketSetDetect::VescPacketSetDetect(uint8_t mode) :
+  VescPacket("SetDetect", 3, COMM_SET_DETECT)
+{
+  *(payload_.first + 1) = mode;
+
+  VescFrame::CRC crc_calc;
+  crc_calc.process_bytes(&(*payload_.first), boost::distance(payload_));
+  uint16_t crc = crc_calc.checksum();
+  *(frame_->end() - 3) = static_cast<uint8_t>(crc >> 8);
+  *(frame_->end() - 2) = static_cast<uint8_t>(crc & 0xFF);
+}
+
 } // namespace vesc_driver

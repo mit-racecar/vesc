@@ -241,4 +241,9 @@ void VescInterface::setServo(double servo)
   send(VescPacketSetServoPos(servo));
 }
 
+void VescInterface::setDetect(uint8_t mode)
+{
+  send(VescPacketSetDetect(mode));
+}
+
 } // namespace vesc_driver
