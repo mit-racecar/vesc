@@ -1,5 +1,5 @@
 // -*- mode:c++; fill-column: 100; -*-
-
+#include "std_msgs/Float32.h"
 #include "vesc_driver/vesc_driver.h"
 #include "vesc_driver/datatypes.h"
 
@@ -54,6 +54,9 @@ VescDriver::VescDriver(ros::NodeHandle nh,
 
   // create vesc state (telemetry) publisher
   state_pub_ = nh.advertise<vesc_msgs::VescStateStamped>("sensors/core", 10);
+
+  // create rotor position publisher
+  rotor_position_pub_ = nh.advertise<vesc_msgs::VescStateStamped>("sensors/rotor_position", 10);
 
   // since vesc state does not include the servo position, publish the commanded
   // servo position as a "sensor"
@@ -152,6 +155,12 @@ void VescDriver::vescPacketCallback(const boost::shared_ptr<VescPacket const>& p
   }
   else if (packet->name() == "RotorPosition") {
     //pubish the value of the rotor position
+    boost::shared_ptr<VescPacketRotorPosition const> position =
+      boost::dynamic_pointer_cast<VescPacketRotorPosition const>(packet);
+
+    std_msgs::Float32::Ptr rotor_position_msg(new std_msgs::Float32);
+    rotor_position_msg->data = position->position();
+    rotor_position_pub_.publish(rotor_position_msg);
   }
 }
 
