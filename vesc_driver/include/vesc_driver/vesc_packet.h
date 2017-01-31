@@ -77,6 +77,18 @@ typedef boost::shared_ptr<VescPacket const> VescPacketConstPtr;
 
 /*------------------------------------------------------------------------------------------------*/
 
+class VescPacketRotorPosition : public VescPacket
+{
+public:
+  VescPacketRotorPosition(boost::shared_ptr<VescFrame> raw);
+
+  float position() const;
+
+};
+
+
+/*------------------------------------------------------------------------------------------------*/
+
 class VescPacketFWVersion : public VescPacket
 {
 public:

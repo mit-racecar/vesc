@@ -150,6 +150,9 @@ void VescDriver::vescPacketCallback(const boost::shared_ptr<VescPacket const>& p
     fw_version_major_ = fw_version->fwMajor();
     fw_version_minor_ = fw_version->fwMinor();
   }
+  else if (packet->name() == "RotorPosition") {
+    //pubish the value of the rotor position
+  }
 }
 
 void VescDriver::vescErrorCallback(const std::string& error)
