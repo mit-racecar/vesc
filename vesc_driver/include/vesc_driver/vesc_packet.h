@@ -77,6 +77,18 @@ typedef boost::shared_ptr<VescPacket const> VescPacketConstPtr;
 
 /*------------------------------------------------------------------------------------------------*/
 
+class VescPacketRotorPosition : public VescPacket
+{
+public:
+  VescPacketRotorPosition(boost::shared_ptr<VescFrame> raw);
+
+  float position() const;
+
+};
+
+
+/*------------------------------------------------------------------------------------------------*/
+
 class VescPacketFWVersion : public VescPacket
 {
 public:
@@ -187,6 +199,14 @@ public:
   VescPacketSetServoPos(double servo_pos);
 
   //  double servo_pos() const;
+};
+
+/*------------------------------------------------------------------------------------------------*/
+
+class VescPacketSetDetect : public VescPacket
+{
+public:
+  VescPacketSetDetect(uint8_t mode);
 };
 
 } // namespace vesc_driver

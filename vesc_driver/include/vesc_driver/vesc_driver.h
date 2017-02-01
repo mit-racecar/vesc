@@ -55,6 +55,7 @@ private:
   ros::Subscriber speed_sub_;
   ros::Subscriber position_sub_;
   ros::Subscriber servo_sub_;
+  ros::Publisher rotor_position_pub_;
   ros::Timer timer_;
 
   // driver modes (possible states)

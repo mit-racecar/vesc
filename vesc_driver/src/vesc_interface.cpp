@@ -13,6 +13,7 @@
 #include <boost/crc.hpp>
 
 #include "vesc_driver/vesc_packet_factory.h"
+#include "vesc_driver/datatypes.h"
 
 namespace vesc_driver
 {
@@ -239,6 +240,11 @@ void VescInterface::setPosition(double position)
 void VescInterface::setServo(double servo)
 {
   send(VescPacketSetServoPos(servo));
+}
+
+void VescInterface::setDetect(disp_pos_mode mode)
+{
+  send(VescPacketSetDetect(mode));
 }
 
 } // namespace vesc_driver

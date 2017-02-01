@@ -14,6 +14,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include "vesc_driver/vesc_packet.h"
+#include "vesc_driver/datatypes.h"
 
 namespace vesc_driver
 {
@@ -91,6 +92,7 @@ public:
   void setSpeed(double speed);
   void setPosition(double position);
   void setServo(double servo);
+  void setDetect(disp_pos_mode mode);
 
 private:
   // Pimpl - hide serial port members from class users

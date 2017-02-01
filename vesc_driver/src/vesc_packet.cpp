@@ -69,6 +69,26 @@ VescPacket::VescPacket(const std::string& name, boost::shared_ptr<VescFrame> raw
 
 /*------------------------------------------------------------------------------------------------*/
 
+VescPacketRotorPosition::VescPacketRotorPosition(boost::shared_ptr<VescFrame> raw) :
+  VescPacket("RotorPosition", raw)
+{
+}
+
+float VescPacketRotorPosition::position() const
+{
+  int32_t value = 0;
+  value |= *(payload_.first + 1) << 24;
+  value |= *(payload_.first + 2) << 16;
+  value |= *(payload_.first + 3) << 8;
+  value |= *(payload_.first + 4);
+
+  return value / 100000.0;
+}
+
+REGISTER_PACKET_TYPE(COMM_ROTOR_POSITION, VescPacketRotorPosition)
+
+/*------------------------------------------------------------------------------------------------*/
+
 VescPacketFWVersion::VescPacketFWVersion(boost::shared_ptr<VescFrame> raw) :
   VescPacket("FWVersion", raw)
 {
@@ -357,6 +377,20 @@ VescPacketSetServoPos::VescPacketSetServoPos(double servo_pos) :
 
   *(payload_.first + 1) = static_cast<uint8_t>((static_cast<uint16_t>(v) >> 8) & 0xFF);
   *(payload_.first + 2) = static_cast<uint8_t>(static_cast<uint16_t>(v) & 0xFF);
+
+  VescFrame::CRC crc_calc;
+  crc_calc.process_bytes(&(*payload_.first), boost::distance(payload_));
+  uint16_t crc = crc_calc.checksum();
+  *(frame_->end() - 3) = static_cast<uint8_t>(crc >> 8);
+  *(frame_->end() - 2) = static_cast<uint8_t>(crc & 0xFF);
+}
+
+/*------------------------------------------------------------------------------------------------*/
+
+VescPacketSetDetect::VescPacketSetDetect(uint8_t mode) :
+  VescPacket("SetDetect", 3, COMM_SET_DETECT)
+{
+  *(payload_.first + 1) = mode;
 
   VescFrame::CRC crc_calc;
   crc_calc.process_bytes(&(*payload_.first), boost::distance(payload_));
