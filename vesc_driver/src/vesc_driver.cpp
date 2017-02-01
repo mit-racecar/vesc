@@ -1,5 +1,4 @@
 // -*- mode:c++; fill-column: 100; -*-
-#include "std_msgs/Float32.h"
 #include "vesc_driver/vesc_driver.h"
 #include "vesc_driver/datatypes.h"
 
@@ -9,6 +8,7 @@
 
 #include <boost/bind.hpp>
 #include <vesc_msgs/VescStateStamped.h>
+#include <std_msgs/Float32.h>
 
 namespace vesc_driver
 {
@@ -41,22 +41,8 @@ VescDriver::VescDriver(ros::NodeHandle nh,
     return;
   }
 
-  std::string detect_mode;
-  private_nh.getParam("detect_mode", detect_mode);
-  // TODO: abstract this away into vesc_interface
-  if (detect_mode.compare("inductance") == 0) {
-    vesc_.setDetect(DISP_POS_MODE_INDUCTANCE);
-  }  else if (detect_mode.compare("observer") == 0) {
-    vesc_.setDetect(DISP_POS_MODE_OBSERVER);
-  } else if (detect_mode.compare("encoder") == 0) {
-    vesc_.setDetect(DISP_POS_MODE_ENCODER);
-  }
-
   // create vesc state (telemetry) publisher
   state_pub_ = nh.advertise<vesc_msgs::VescStateStamped>("sensors/core", 10);
-
-  // create rotor position publisher
-  rotor_position_pub_ = nh.advertise<vesc_msgs::VescStateStamped>("sensors/rotor_position", 10);
 
   // since vesc state does not include the servo position, publish the commanded
   // servo position as a "sensor"
@@ -73,6 +59,36 @@ VescDriver::VescDriver(ros::NodeHandle nh,
 
   // create a 50Hz timer, used for state machine & polling VESC telemetry
   timer_ = nh.createTimer(ros::Duration(1.0/50.0), &VescDriver::timerCallback, this);
+
+  // decide whether or not we want to publish rotor positions
+  // this is enabled with by sending a "set detect" packet with a mode
+  // "encoder" is probably the most useful
+  std::string rotor_position_source;
+  if (private_nh.getParam("rotor_position_source", rotor_position_source)) {
+    disp_pos_mode mode = DISP_POS_MODE_NONE;
+    if (rotor_position_source.compare("inductance") == 0) {
+      mode = DISP_POS_MODE_INDUCTANCE;
+    }  else if (rotor_position_source.compare("observer") == 0) {
+      mode = DISP_POS_MODE_OBSERVER;
+    } else if (rotor_position_source.compare("encoder") == 0) {
+      mode = DISP_POS_MODE_ENCODER;
+    } else if (rotor_position_source.compare("pid_pos") == 0) {
+      mode = DISP_POS_MODE_PID_POS;
+    } else if (rotor_position_source.compare("pid_pos_error") == 0) {
+      mode = DISP_POS_MODE_PID_POS_ERROR;
+    } else if (rotor_position_source.compare("encoder_observer_error") == 0) {
+      mode = DISP_POS_MODE_ENCODER_OBSERVER_ERROR;
+    } else if (rotor_position_source.compare("none") != 0) {
+      ROS_WARN("Invalid display mode parameter, defaulting to none");
+    }
+
+    if (mode != DISP_POS_MODE_NONE) {
+      // create rotor position publisher
+      rotor_position_pub_ = nh.advertise<std_msgs::Float32>("sensors/rotor_position", 10);
+      ROS_INFO("Enabling rotor position publisher from source: %s", rotor_position_source.c_str());
+    }
+    vesc_.setDetect(mode);
+  }
 }
 
   /* TODO or TO-THINKABOUT LIST
@@ -124,7 +140,7 @@ void VescDriver::timerCallback(const ros::TimerEvent& event)
 
 void VescDriver::vescPacketCallback(const boost::shared_ptr<VescPacket const>& packet)
 {
-  if (packet->name() == "Values") {
+  if (packet->name() == "Values" && state_pub_) {
     boost::shared_ptr<VescPacketValues const> values =
       boost::dynamic_pointer_cast<VescPacketValues const>(packet);
 
@@ -153,7 +169,7 @@ void VescDriver::vescPacketCallback(const boost::shared_ptr<VescPacket const>& p
     fw_version_major_ = fw_version->fwMajor();
     fw_version_minor_ = fw_version->fwMinor();
   }
-  else if (packet->name() == "RotorPosition") {
+  else if (packet->name() == "RotorPosition" && rotor_position_pub_) {
     //pubish the value of the rotor position
     boost::shared_ptr<VescPacketRotorPosition const> position =
       boost::dynamic_pointer_cast<VescPacketRotorPosition const>(packet);
