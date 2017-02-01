@@ -175,7 +175,8 @@ void VescDriver::vescPacketCallback(const boost::shared_ptr<VescPacket const>& p
       boost::dynamic_pointer_cast<VescPacketRotorPosition const>(packet);
 
     std_msgs::Float32::Ptr rotor_position_msg(new std_msgs::Float32);
-    rotor_position_msg->data = position->position();
+    // we get degrees from the VESC, but radians are the standard in ROS
+    rotor_position_msg->data = position->position() * M_PI / 180.0;
     rotor_position_pub_.publish(rotor_position_msg);
   }
 }
