@@ -10,6 +10,9 @@
 
   <!-- VESC driver parameters -->
   <arg name="port" default="/dev/ttyUSB0" />
+
+  <!-- Parameter for enabling rotor position publishing
+       Possible values are "inductance", "observer", "encoder", "pid_pos", "pid_pos_error", "encoder_observer_error" -->
   <arg name="rotor_position_source" default="none" />
 
   <!-- VESC driver node -->

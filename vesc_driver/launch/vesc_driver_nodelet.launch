@@ -14,7 +14,11 @@
 
   <!-- VESC driver parameters -->
   <arg name="port" default="/dev/ttyUSB0" />
-  
+
+  <!-- Parameter for enabling rotor position publishing
+       Possible values are "inductance", "observer", "encoder", "pid_pos", "pid_pos_error", "encoder_observer_error" -->
+  <arg name="rotor_position_source" default="none" />
+
   <!-- Also globally disable bond heartbeat timeout in debug mode, so everything
        doesn't die when you hit a break point -->
   <param if="$(arg debug)" name="/bond_disable_heartbeat_timeout" value="true" />
@@ -29,6 +33,7 @@
   <node pkg="nodelet" type="nodelet" name="$(arg node_name)"
         args="load vesc_driver::VescDriverNodelet $(arg manager)" >
     <param name="port" value="$(arg port)" />
-  </node>    
+    <param name="rotor_position_source" value="$(arg rotor_position_source)" />
+  </node>
 
 </launch>
