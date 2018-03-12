@@ -275,6 +275,7 @@ typedef enum {
         COMM_SET_RPM,
         COMM_SET_POS,
         COMM_SET_DETECT,
+	COMM_SET_HANDBRAKE,
         COMM_SET_SERVO_POS,
         COMM_SET_MCCONF,
         COMM_GET_MCCONF,
