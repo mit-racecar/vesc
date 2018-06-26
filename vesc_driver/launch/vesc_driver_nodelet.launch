@@ -13,7 +13,7 @@
   <arg name="num_worker_threads" default="4" />
 
   <!-- VESC driver parameters -->
-  <arg name="port" default="/dev/ttyUSB0" />
+  <arg name="port" default="/dev/ttyACM0" />
   
   <!-- Also globally disable bond heartbeat timeout in debug mode, so everything
        doesn't die when you hit a break point -->
