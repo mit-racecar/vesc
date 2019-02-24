@@ -26,13 +26,22 @@ VescFrame::VescFrame(int payload_size)
     *(frame_->begin() + 1) = payload_size;
     payload_.first = frame_->begin() + 2;
   }
-  else {
+  else if(payload_size <= 65535){
     // two byte payload size
     frame_.reset(new Buffer(VESC_MIN_FRAME_SIZE + 1 + payload_size));
     *frame_->begin() = 3;
     *(frame_->begin() + 1) = payload_size >> 8;
     *(frame_->begin() + 2) = payload_size & 0xFF;
     payload_.first = frame_->begin() + 3;
+  }
+  else {
+    // many byte payload size
+    frame_.reset(new Buffer(VESC_MIN_FRAME_SIZE + 2 + payload_size));
+    *frame_->begin() = 4;
+    *(frame_->begin() + 1) = ((payload_size >> 16) & 0xFF);
+    *(frame_->begin() + 2) = ((payload_size >> 8) & 0xFF);
+    *(frame_->begin() + 3) = payload_size & 0xFF;
+    payload_.first = frame_->begin() + 4;
   }
 
   payload_.second = payload_.first + payload_size;
@@ -357,6 +366,23 @@ VescPacketSetServoPos::VescPacketSetServoPos(double servo_pos) :
 
   *(payload_.first + 1) = static_cast<uint8_t>((static_cast<uint16_t>(v) >> 8) & 0xFF);
   *(payload_.first + 2) = static_cast<uint8_t>(static_cast<uint16_t>(v) & 0xFF);
+
+  VescFrame::CRC crc_calc;
+  crc_calc.process_bytes(&(*payload_.first), boost::distance(payload_));
+  uint16_t crc = crc_calc.checksum();
+  *(frame_->end() - 3) = static_cast<uint8_t>(crc >> 8);
+  *(frame_->end() - 2) = static_cast<uint8_t>(crc & 0xFF);
+}
+
+VescPacketSetHandbrake::VescPacketSetHandbrake(double current) :
+  VescPacket("SetHandbrake", 5, COMM_SET_HANDBRAKE)
+{
+  int32_t v = static_cast<int32_t>(current * 1000.0);
+
+  *(payload_.first + 1) = static_cast<uint8_t>((static_cast<uint32_t>(v) >> 24) & 0xFF);
+  *(payload_.first + 2) = static_cast<uint8_t>((static_cast<uint32_t>(v) >> 16) & 0xFF);
+  *(payload_.first + 3) = static_cast<uint8_t>((static_cast<uint32_t>(v) >> 8) & 0xFF);
+  *(payload_.first + 4) = static_cast<uint8_t>(static_cast<uint32_t>(v) & 0xFF);
 
   VescFrame::CRC crc_calc;
   crc_calc.process_bytes(&(*payload_.first), boost::distance(payload_));

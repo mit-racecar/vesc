@@ -241,4 +241,10 @@ void VescInterface::setServo(double servo)
   send(VescPacketSetServoPos(servo));
 }
 
+void VescInterface::setHandbrake(double current)
+{
+  send(VescPacketSetHandbrake(current));
+}
+
+
 } // namespace vesc_driver

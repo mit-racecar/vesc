@@ -189,6 +189,14 @@ public:
   //  double servo_pos() const;
 };
 
+class VescPacketSetHandbrake : public VescPacket
+{
+public:
+  VescPacketSetHandbrake(double current);
+
+  //  double handbrake() const;
+};
+
 } // namespace vesc_driver
 
 #endif // VESC_DRIVER_VESC_PACKET_H_
