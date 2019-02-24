@@ -192,7 +192,7 @@ public:
 class VescPacketSetHandbrake : public VescPacket
 {
 public:
-  VescPacketSetHandbrake(double current);
+  VescPacketSetHandbrake(double handbrake);
 
   //  double handbrake() const;
 };

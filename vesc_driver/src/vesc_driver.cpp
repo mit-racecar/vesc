@@ -20,7 +20,8 @@ VescDriver::VescDriver(ros::NodeHandle nh,
   duty_cycle_limit_(private_nh, "duty_cycle", -1.0, 1.0), current_limit_(private_nh, "current"),
   brake_limit_(private_nh, "brake"), speed_limit_(private_nh, "speed"),
   position_limit_(private_nh, "position"), servo_limit_(private_nh, "servo", 0.0, 1.0),
-  driver_mode_(MODE_INITIALIZING), fw_version_major_(-1), fw_version_minor_(-1)
+  driver_mode_(MODE_INITIALIZING), fw_version_major_(-1), fw_version_minor_(-1),
+  handbrake_limit_(private_nh, "handbrake")
 {
   // get vesc serial port address
   std::string port;
@@ -55,6 +56,8 @@ VescDriver::VescDriver(ros::NodeHandle nh,
   speed_sub_ = nh.subscribe("commands/motor/speed", 10, &VescDriver::speedCallback, this);
   position_sub_ = nh.subscribe("commands/motor/position", 10, &VescDriver::positionCallback, this);
   servo_sub_ = nh.subscribe("commands/servo/position", 10, &VescDriver::servoCallback, this);
+  handbrake_sub_ = nh.subscribe("commands/motor/handbrake", 10,
+                                 &VescDriver::handbrakeCallback, this);
 
   // create a 50Hz timer, used for state machine & polling VESC telemetry
   timer_ = nh.createTimer(ros::Duration(1.0/50.0), &VescDriver::timerCallback, this);
@@ -219,6 +222,18 @@ void VescDriver::servoCallback(const std_msgs::Float64::ConstPtr& servo)
     std_msgs::Float64::Ptr servo_sensor_msg(new std_msgs::Float64);
     servo_sensor_msg->data = servo_clipped;
     servo_sensor_pub_.publish(servo_sensor_msg);
+  }
+}
+
+/**
+ * @param handbrake Commanded VESC braking current in Amps. Any value is accepted by this driver.
+ *              However, it is more current than brake
+ */
+
+void VescDriver::handbrakeCallback(const std_msgs::Float64::ConstPtr& handbrake)
+{
+  if (driver_mode_ = MODE_OPERATING) {
+    vesc_.setHandbrake(handbrake_limit_.clip(handbrake->data));
   }
 }
 

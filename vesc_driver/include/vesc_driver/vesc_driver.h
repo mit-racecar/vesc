@@ -45,6 +45,7 @@ private:
   CommandLimit speed_limit_;
   CommandLimit position_limit_;
   CommandLimit servo_limit_;
+  CommandLimit handbrake_limit_;
 
   // ROS services
   ros::Publisher state_pub_;
@@ -55,6 +56,7 @@ private:
   ros::Subscriber speed_sub_;
   ros::Subscriber position_sub_;
   ros::Subscriber servo_sub_;
+  ros::Subscriber handbrake_sub_;
   ros::Timer timer_;
 
   // driver modes (possible states)
@@ -76,6 +78,7 @@ private:
   void speedCallback(const std_msgs::Float64::ConstPtr& speed);
   void positionCallback(const std_msgs::Float64::ConstPtr& position);
   void servoCallback(const std_msgs::Float64::ConstPtr& servo);
+  void handbrakeCallback(const std_msgs::Float64::ConstPtr& handbrake);
 };
 
 } // namespace vesc_driver

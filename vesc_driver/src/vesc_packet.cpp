@@ -374,10 +374,10 @@ VescPacketSetServoPos::VescPacketSetServoPos(double servo_pos) :
   *(frame_->end() - 2) = static_cast<uint8_t>(crc & 0xFF);
 }
 
-VescPacketSetHandbrake::VescPacketSetHandbrake(double current) :
+VescPacketSetHandbrake::VescPacketSetHandbrake(double handbrake) :
   VescPacket("SetHandbrake", 5, COMM_SET_HANDBRAKE)
 {
-  int32_t v = static_cast<int32_t>(current * 1000.0);
+  int32_t v = static_cast<int32_t>(handbrake * 1000.0);
 
   *(payload_.first + 1) = static_cast<uint8_t>((static_cast<uint32_t>(v) >> 24) & 0xFF);
   *(payload_.first + 2) = static_cast<uint8_t>((static_cast<uint32_t>(v) >> 16) & 0xFF);

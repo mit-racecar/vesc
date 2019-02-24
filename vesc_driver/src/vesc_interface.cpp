@@ -241,9 +241,9 @@ void VescInterface::setServo(double servo)
   send(VescPacketSetServoPos(servo));
 }
 
-void VescInterface::setHandbrake(double current)
+void VescInterface::setHandbrake(double handbrake)
 {
-  send(VescPacketSetHandbrake(current));
+  send(VescPacketSetHandbrake(handbrake));
 }
 
 
