@@ -112,7 +112,7 @@ void VescDriver::timerCallback(const ros::TimerEvent& event)
 
 void VescDriver::vescPacketCallback(const boost::shared_ptr<VescPacket const>& packet)
 {
-  if (packet->name() == "Values") {
+  if (packet->name() == "Values") { // this is some error
     boost::shared_ptr<VescPacketValues const> values =
       boost::dynamic_pointer_cast<VescPacketValues const>(packet);
 
