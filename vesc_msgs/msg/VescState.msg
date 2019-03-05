@@ -20,11 +20,11 @@ float32 duty_cycle_now
 float32 speed #rpm                  
 float32 INPUT_VOLTAGE         
 float32 amp_hours         
-float32 amp_hours_charged         
+float32 amp_hours_charged
 float32 watt_hours
 float32 watt_hours_charged
-float32 tachometer
-float32 tachometer_abs
+int32 tachometer
+int32 tachometer_abs
 int32   fault_code
 float32 pid_pos_now
 int8    controller_id

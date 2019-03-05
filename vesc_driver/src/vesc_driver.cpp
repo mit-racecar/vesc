@@ -125,12 +125,23 @@ void VescDriver::vescPacketCallback(const boost::shared_ptr<VescPacket const>& p
     state_msg->state.temp_motor = values->temp_motor();
     state_msg->state.avg_motor_current = values->avg_motor_current();
     state_msg->state.avg_motor_current = values->avg_input_current();
+    state_msg->state.avg_id = values->avg_id();
+    state_msg->state.avg_iq = values->avg_iq();
     state_msg->state.duty_cycle_now = values->duty_cycle_now();
     state_msg->state.speed = values->rpm();
-    state_msg->state.tachometer = values->tachometer();
-    state_msg->state.tachometer_abs = 0;
     state_msg->state.INPUT_VOLTAGE = values->GET_INPUT_VOLTAGE();
+    state_msg->state.amp_hours = values->amp_hours();
+    state_msg->state.amp_hours_charged = values->amp_hours_charged();
+    state_msg->state.watt_hours = values->watt_hours();
+    state_msg->state.watt_hours_charged = values->watt_hours_charged();
+    state_msg->state.tachometer = values->tachometer();
+    state_msg->state.tachometer_abs = values->tachometer_abs();
     state_msg->state.fault_code = values->fault_code();
+    state_msg->state.pid_pos_now = values->pid_pos_now();
+    state_msg->state.controller_id = values->controller_id();
+    state_msg->state.NTC_TEMP_MOS1 = values->NTC_TEMP_MOS1();
+    state_msg->state.NTC_TEMP_MOS2 = values->NTC_TEMP_MOS2();
+    state_msg->state.NTC_TEMP_MOS3 = values->NTC_TEMP_MOS3();
 
     state_pub_.publish(state_msg);
   }
