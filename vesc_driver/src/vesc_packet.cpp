@@ -168,7 +168,7 @@ double VescPacketValues::duty_cycle_now() const
 }
 double VescPacketValues::rpm() const
 {
-  int64_t v = static_cast<int64_t>((static_cast<uint32_t>(*(payload_.first + 23)) << 24) +
+  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 23)) << 24) +
                                    (static_cast<uint32_t>(*(payload_.first + 24)) << 16) +
                                    (static_cast<uint32_t>(*(payload_.first + 25)) << 8) +
                                    static_cast<uint32_t>(*(payload_.first + 26)));
