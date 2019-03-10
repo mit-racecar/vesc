@@ -20,7 +20,8 @@ VescDriver::VescDriver(ros::NodeHandle nh,
   duty_cycle_limit_(private_nh, "duty_cycle", -1.0, 1.0), current_limit_(private_nh, "current"),
   brake_limit_(private_nh, "brake"), speed_limit_(private_nh, "speed"),
   position_limit_(private_nh, "position"), servo_limit_(private_nh, "servo", 0.0, 1.0),
-  driver_mode_(MODE_INITIALIZING), fw_version_major_(-1), fw_version_minor_(-1)
+  driver_mode_(MODE_INITIALIZING), fw_version_major_(-1), fw_version_minor_(-1),
+  handbrake_limit_(private_nh, "handbrake")
 {
   // get vesc serial port address
   std::string port;
@@ -55,6 +56,8 @@ VescDriver::VescDriver(ros::NodeHandle nh,
   speed_sub_ = nh.subscribe("commands/motor/speed", 10, &VescDriver::speedCallback, this);
   position_sub_ = nh.subscribe("commands/motor/position", 10, &VescDriver::positionCallback, this);
   servo_sub_ = nh.subscribe("commands/servo/position", 10, &VescDriver::servoCallback, this);
+  handbrake_sub_ = nh.subscribe("commands/motor/handbrake", 10,
+                                 &VescDriver::handbrakeCallback, this);
 
   // create a 50Hz timer, used for state machine & polling VESC telemetry
   timer_ = nh.createTimer(ros::Duration(1.0/50.0), &VescDriver::timerCallback, this);
@@ -106,28 +109,39 @@ void VescDriver::timerCallback(const ros::TimerEvent& event)
     assert(false && "unknown driver mode");
   }
 }
+/*
+notes: roslaunch vesc_driver vesc_driver_node.launch port:=/dev/ttyACM0
 
+*/
 void VescDriver::vescPacketCallback(const boost::shared_ptr<VescPacket const>& packet)
 {
-  if (packet->name() == "Values") {
+  if (packet->name() == "Values") { // this is some error
     boost::shared_ptr<VescPacketValues const> values =
-      boost::dynamic_pointer_cast<VescPacketValues const>(packet);
+    boost::dynamic_pointer_cast<VescPacketValues const>(packet);
 
     vesc_msgs::VescStateStamped::Ptr state_msg(new vesc_msgs::VescStateStamped);
     state_msg->header.stamp = ros::Time::now();
-    state_msg->state.voltage_input = values->v_in();
-    state_msg->state.temperature_pcb = values->temp_pcb();
-    state_msg->state.current_motor = values->current_motor();
-    state_msg->state.current_input = values->current_in();
+    state_msg->state.temp_fet = values->temp_fet();
+    state_msg->state.temp_motor = values->temp_motor();
+    state_msg->state.avg_motor_current = values->avg_motor_current();
+    state_msg->state.avg_motor_current = values->avg_input_current();
+    state_msg->state.avg_id = values->avg_id();
+    state_msg->state.avg_iq = values->avg_iq();
+    state_msg->state.duty_cycle_now = values->duty_cycle_now();
     state_msg->state.speed = values->rpm();
-    state_msg->state.duty_cycle = values->duty_now();
-    state_msg->state.charge_drawn = values->amp_hours();
-    state_msg->state.charge_regen = values->amp_hours_charged();
-    state_msg->state.energy_drawn = values->watt_hours();
-    state_msg->state.energy_regen = values->watt_hours_charged();
-    state_msg->state.displacement = values->tachometer();
-    state_msg->state.distance_traveled = values->tachometer_abs();
+    state_msg->state.INPUT_VOLTAGE = values->GET_INPUT_VOLTAGE();
+    state_msg->state.amp_hours = values->amp_hours();
+    state_msg->state.amp_hours_charged = values->amp_hours_charged();
+    state_msg->state.watt_hours = values->watt_hours();
+    state_msg->state.watt_hours_charged = values->watt_hours_charged();
+    state_msg->state.tachometer = values->tachometer();
+    state_msg->state.tachometer_abs = values->tachometer_abs();
     state_msg->state.fault_code = values->fault_code();
+    state_msg->state.pid_pos_now = values->pid_pos_now();
+    state_msg->state.controller_id = values->controller_id();
+    state_msg->state.NTC_TEMP_MOS1 = values->NTC_TEMP_MOS1();
+    state_msg->state.NTC_TEMP_MOS2 = values->NTC_TEMP_MOS2();
+    state_msg->state.NTC_TEMP_MOS3 = values->NTC_TEMP_MOS3();
 
     state_pub_.publish(state_msg);
   }
@@ -219,6 +233,18 @@ void VescDriver::servoCallback(const std_msgs::Float64::ConstPtr& servo)
     std_msgs::Float64::Ptr servo_sensor_msg(new std_msgs::Float64);
     servo_sensor_msg->data = servo_clipped;
     servo_sensor_pub_.publish(servo_sensor_msg);
+  }
+}
+
+/**
+ * @param handbrake Commanded VESC braking current in Amps. Any value is accepted by this driver.
+ *              However, it is more current than brake
+ */
+
+void VescDriver::handbrakeCallback(const std_msgs::Float64::ConstPtr& handbrake)
+{
+  if (driver_mode_ = MODE_OPERATING) {
+    vesc_.setHandbrake(handbrake_limit_.clip(handbrake->data));
   }
 }
 

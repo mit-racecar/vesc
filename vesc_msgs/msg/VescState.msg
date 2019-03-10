@@ -4,21 +4,30 @@
 int32 FAULT_CODE_NONE=0
 int32 FAULT_CODE_OVER_VOLTAGE=1
 int32 FAULT_CODE_UNDER_VOLTAGE=2
-int32 FAULT_CODE_DRV8302=3
+int32 FAULT_CODE_DRV=3
 int32 FAULT_CODE_ABS_OVER_CURRENT=4
 int32 FAULT_CODE_OVER_TEMP_FET=5
 int32 FAULT_CODE_OVER_TEMP_MOTOR=6
 
-float64 voltage_input        # input voltage (volt)
-float64 temperature_pcb      # temperature of printed circuit board (degrees Celsius)
-float64 current_motor        # motor current (ampere)
-float64 current_input        # input current (ampere)
-float64 speed                # motor electrical speed (revolutions per minute) 
-float64 duty_cycle           # duty cycle (0 to 1)
-float64 charge_drawn         # electric charge drawn from input (ampere-hour)
-float64 charge_regen         # electric charge regenerated to input (ampere-hour)
-float64 energy_drawn         # energy drawn from input (watt-hour)
-float64 energy_regen         # energy regenerated to input (watt-hour)
-float64 displacement         # net tachometer (counts)
-float64 distance_traveled    # total tachnometer (counts)
+# plase follow the bledc firwmare: commands.c
+float32 temp_fet             
+float32 temp_motor           
+float32 avg_motor_current    
+float32 avg_input_current    
+float32 avg_id               
+float32 avg_iq               
+float32 duty_cycle_now       
+float32 speed #rpm                  
+float32 INPUT_VOLTAGE         
+float32 amp_hours         
+float32 amp_hours_charged
+float32 watt_hours
+float32 watt_hours_charged
+int32 tachometer
+int32 tachometer_abs
 int32   fault_code
+float32 pid_pos_now
+int8    controller_id
+float32 NTC_TEMP_MOS1
+float32 NTC_TEMP_MOS2
+float32 NTC_TEMP_MOS3

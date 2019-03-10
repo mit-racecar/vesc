@@ -1,5 +1,5 @@
 // -*- mode:c++; fill-column: 100; -*-
-
+#include <ros/ros.h>
 #include "vesc_driver/vesc_packet.h"
 
 #include <cassert>
@@ -26,13 +26,22 @@ VescFrame::VescFrame(int payload_size)
     *(frame_->begin() + 1) = payload_size;
     payload_.first = frame_->begin() + 2;
   }
-  else {
+  else if(payload_size <= 65535){
     // two byte payload size
     frame_.reset(new Buffer(VESC_MIN_FRAME_SIZE + 1 + payload_size));
     *frame_->begin() = 3;
     *(frame_->begin() + 1) = payload_size >> 8;
     *(frame_->begin() + 2) = payload_size & 0xFF;
     payload_.first = frame_->begin() + 3;
+  }
+  else {
+    // many byte payload size
+    frame_.reset(new Buffer(VESC_MIN_FRAME_SIZE + 2 + payload_size));
+    *frame_->begin() = 4;
+    *(frame_->begin() + 1) = ((payload_size >> 16) & 0xFF);
+    *(frame_->begin() + 2) = ((payload_size >> 8) & 0xFF);
+    *(frame_->begin() + 3) = payload_size & 0xFF;
+    payload_.first = frame_->begin() + 4;
   }
 
   payload_.second = payload_.first + payload_size;
@@ -97,146 +106,166 @@ VescPacketRequestFWVersion::VescPacketRequestFWVersion() :
 }
 
 /*------------------------------------------------------------------------------------------------*/
+/*
+please following the vesc firmware:bldc
+commands.c case in COMM_GET_VALUES section program
+*/
 
 VescPacketValues::VescPacketValues(boost::shared_ptr<VescFrame> raw) :
   VescPacket("Values", raw)
 {
 }
 
-double VescPacketValues::temp_mos1() const
+double VescPacketValues::temp_fet() const // mc_interface_temp_fet_filtered
 {
   int16_t v = static_cast<int16_t>((static_cast<uint16_t>(*(payload_.first + 1)) << 8) +
                                    static_cast<uint16_t>(*(payload_.first + 2)));
-  return static_cast<double>(v) / 10.0;
+  return static_cast<double>(v) / 1e1;
 }
-double VescPacketValues::temp_mos2() const
+double VescPacketValues::temp_motor() const // mc_interface_temp_fet_filtered
 {
   int16_t v = static_cast<int16_t>((static_cast<uint16_t>(*(payload_.first + 3)) << 8) +
                                    static_cast<uint16_t>(*(payload_.first + 4)));
-  return static_cast<double>(v) / 10.0;
+  return static_cast<double>(v) / 1e1;
 }
-double VescPacketValues::temp_mos3() const
+double VescPacketValues::avg_motor_current() const
 {
-  int16_t v = static_cast<int16_t>((static_cast<uint16_t>(*(payload_.first + 5)) << 8) +
-                                   static_cast<uint16_t>(*(payload_.first + 6)));
-  return static_cast<double>(v) / 10.0;
+  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 5)) << 24) +
+                                   (static_cast<uint32_t>(*(payload_.first + 6)) << 16) +
+                                   (static_cast<uint32_t>(*(payload_.first + 7)) << 8) +
+                                   static_cast<uint32_t>(*(payload_.first + 8)));
+  return static_cast<double>(v) / 1e2; 
 }
-double VescPacketValues::temp_mos4() const
+double VescPacketValues::avg_input_current() const
 {
-  int16_t v = static_cast<int16_t>((static_cast<uint16_t>(*(payload_.first + 7)) << 8) +
-                                   static_cast<uint16_t>(*(payload_.first + 8)));
-  return static_cast<double>(v) / 10.0;
+  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 9)) << 24) +
+                                   (static_cast<uint32_t>(*(payload_.first + 10)) << 16) +
+                                   (static_cast<uint32_t>(*(payload_.first + 11)) << 8) +
+                                   static_cast<uint32_t>(*(payload_.first + 12)));
+  return static_cast<double>(v) / 1e2; 
 }
-double VescPacketValues::temp_mos5() const
+double VescPacketValues::avg_id() const
 {
-  int16_t v = static_cast<int16_t>((static_cast<uint16_t>(*(payload_.first + 9)) << 8) +
-                                   static_cast<uint16_t>(*(payload_.first + 10)));
-  return static_cast<double>(v) / 10.0;
+  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 13)) << 24) +
+                                   (static_cast<uint32_t>(*(payload_.first + 14)) << 16) +
+                                   (static_cast<uint32_t>(*(payload_.first + 15)) << 8) +
+                                   static_cast<uint32_t>(*(payload_.first + 16)));
+  return static_cast<double>(v) / 1e2; 
 }
-double VescPacketValues::temp_mos6() const
+double VescPacketValues::avg_iq() const
 {
-  int16_t v = static_cast<int16_t>((static_cast<uint16_t>(*(payload_.first + 11)) << 8) +
-                                   static_cast<uint16_t>(*(payload_.first + 12)));
-  return static_cast<double>(v) / 10.0;
+  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 17)) << 24) +
+                                   (static_cast<uint32_t>(*(payload_.first + 18)) << 16) +
+                                   (static_cast<uint32_t>(*(payload_.first + 19)) << 8) +
+                                   static_cast<uint32_t>(*(payload_.first + 20)));
+  return static_cast<double>(v) / 1e2; 
 }
-double VescPacketValues::temp_pcb() const
+double VescPacketValues::duty_cycle_now() const
 {
-  int16_t v = static_cast<int16_t>((static_cast<uint16_t>(*(payload_.first + 13)) << 8) +
-                                   static_cast<uint16_t>(*(payload_.first + 14)));
-  return static_cast<double>(v) / 10.0;
-}
-double VescPacketValues::current_motor() const
-{
-  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 15)) << 24) +
-                                   (static_cast<uint32_t>(*(payload_.first + 16)) << 16) +
-                                   (static_cast<uint32_t>(*(payload_.first + 17)) << 8) +
-                                   static_cast<uint32_t>(*(payload_.first + 18)));
-  return static_cast<double>(v) / 100.0;
-}
-double VescPacketValues::current_in() const
-{
-  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 19)) << 24) +
-                                   (static_cast<uint32_t>(*(payload_.first + 20)) << 16) +
-                                   (static_cast<uint32_t>(*(payload_.first + 21)) << 8) +
-                                   static_cast<uint32_t>(*(payload_.first + 22)));
-  return static_cast<double>(v) / 100.0;
-}
-double VescPacketValues::duty_now() const
-{
-  int16_t v = static_cast<int16_t>((static_cast<uint16_t>(*(payload_.first + 23)) << 8) +
-                                   static_cast<uint16_t>(*(payload_.first + 24)));
-  return static_cast<double>(v) / 1000.0;
+  int16_t v = static_cast<int16_t>((static_cast<uint16_t>(*(payload_.first + 21)) << 8) +
+                                   static_cast<uint16_t>(*(payload_.first + 22)));
+  return static_cast<double>(v) / 1e3; 
 }
 double VescPacketValues::rpm() const
 {
-  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 25)) << 24) +
-                                   (static_cast<uint32_t>(*(payload_.first + 26)) << 16) +
-                                   (static_cast<uint32_t>(*(payload_.first + 27)) << 8) +
-                                   static_cast<uint32_t>(*(payload_.first + 28)));
-  return static_cast<double>(v);
+  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 23)) << 24) +
+                                   (static_cast<uint32_t>(*(payload_.first + 24)) << 16) +
+                                   (static_cast<uint32_t>(*(payload_.first + 25)) << 8) +
+                                   static_cast<uint32_t>(*(payload_.first + 26)));
+  return static_cast<double>(v) / 1e0; 
 }
-double VescPacketValues::v_in() const
+double VescPacketValues::GET_INPUT_VOLTAGE() const
 {
-  int16_t v = static_cast<int16_t>((static_cast<uint16_t>(*(payload_.first + 29)) << 8) +
-                                   static_cast<uint16_t>(*(payload_.first + 30)));
-  return static_cast<double>(v) / 10.0;
+  int16_t v = static_cast<int16_t>((static_cast<uint16_t>(*(payload_.first + 27)) << 8) +
+                                   static_cast<uint16_t>(*(payload_.first + 28)));
+  return static_cast<double>(v) / 1e1; 
 }
 double VescPacketValues::amp_hours() const
 {
-  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 31)) << 24) +
-                                   (static_cast<uint32_t>(*(payload_.first + 32)) << 16) +
-                                   (static_cast<uint32_t>(*(payload_.first + 33)) << 8) +
-                                   static_cast<uint32_t>(*(payload_.first + 34)));
-  return static_cast<double>(v);
+  int64_t v = static_cast<int64_t>((static_cast<uint32_t>(*(payload_.first + 29)) << 24) +
+                                   (static_cast<uint32_t>(*(payload_.first + 30)) << 16) +
+                                   (static_cast<uint32_t>(*(payload_.first + 31)) << 8) +
+                                   static_cast<uint32_t>(*(payload_.first + 32)));
+  return static_cast<double>(v) / 1e4; 
 }
 double VescPacketValues::amp_hours_charged() const
 {
-  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 35)) << 24) +
-                                   (static_cast<uint32_t>(*(payload_.first + 36)) << 16) +
-                                   (static_cast<uint32_t>(*(payload_.first + 37)) << 8) +
-                                   static_cast<uint32_t>(*(payload_.first + 38)));
-  return static_cast<double>(v);
+  int64_t v = static_cast<int64_t>((static_cast<uint32_t>(*(payload_.first + 33)) << 24) +
+                                   (static_cast<uint32_t>(*(payload_.first + 34)) << 16) +
+                                   (static_cast<uint32_t>(*(payload_.first + 35)) << 8) +
+                                   static_cast<uint32_t>(*(payload_.first + 36)));
+  return static_cast<double>(v) / 1e4; 
 }
 double VescPacketValues::watt_hours() const
 {
-  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 39)) << 24) +
-                                   (static_cast<uint32_t>(*(payload_.first + 40)) << 16) +
-                                   (static_cast<uint32_t>(*(payload_.first + 41)) << 8) +
-                                   static_cast<uint32_t>(*(payload_.first + 42)));
-  return static_cast<double>(v);
+  int64_t v = static_cast<int64_t>((static_cast<uint32_t>(*(payload_.first + 37)) << 24) +
+                                   (static_cast<uint32_t>(*(payload_.first + 38)) << 16) +
+                                   (static_cast<uint32_t>(*(payload_.first + 39)) << 8) +
+                                   static_cast<uint32_t>(*(payload_.first + 40)));
+  return static_cast<double>(v) / 1e4; 
 }
 double VescPacketValues::watt_hours_charged() const
 {
-  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 43)) << 24) +
-                                   (static_cast<uint32_t>(*(payload_.first + 44)) << 16) +
-                                   (static_cast<uint32_t>(*(payload_.first + 45)) << 8) +
-                                   static_cast<uint32_t>(*(payload_.first + 46)));
-  return static_cast<double>(v);
+  int64_t v = static_cast<int64_t>((static_cast<uint32_t>(*(payload_.first + 41)) << 24) +
+                                   (static_cast<uint32_t>(*(payload_.first + 42)) << 16) +
+                                   (static_cast<uint32_t>(*(payload_.first + 43)) << 8) +
+                                   static_cast<uint32_t>(*(payload_.first + 44)));
+  return static_cast<double>(v) / 1e4; 
 }
-double VescPacketValues::tachometer() const
+int32_t VescPacketValues::tachometer() const
 {
-  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 47)) << 24) +
-                                   (static_cast<uint32_t>(*(payload_.first + 48)) << 16) +
-                                   (static_cast<uint32_t>(*(payload_.first + 49)) << 8) +
-                                   static_cast<uint32_t>(*(payload_.first + 50)));
-  return static_cast<double>(v);
+  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 45)) << 24) +
+                                   (static_cast<uint32_t>(*(payload_.first + 46)) << 16) +
+                                   (static_cast<uint32_t>(*(payload_.first + 47)) << 8) +
+                                   static_cast<uint32_t>(*(payload_.first + 48)));
+  return v;
 }
-double VescPacketValues::tachometer_abs() const
+int32_t VescPacketValues::tachometer_abs() const
 {
-  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 51)) << 24) +
-                                   (static_cast<uint32_t>(*(payload_.first + 52)) << 16) +
-                                   (static_cast<uint32_t>(*(payload_.first + 53)) << 8) +
-                                   static_cast<uint32_t>(*(payload_.first + 54)));
-  return static_cast<double>(v);
+  int32_t v = static_cast<int32_t>((static_cast<uint32_t>(*(payload_.first + 49)) << 24) +
+                                   (static_cast<uint32_t>(*(payload_.first + 50)) << 16) +
+                                   (static_cast<uint32_t>(*(payload_.first + 51)) << 8) +
+                                   static_cast<uint32_t>(*(payload_.first + 52)));
+  return v;
 }
 int VescPacketValues::fault_code() const
 {
-  return static_cast<int32_t>(*(payload_.first + 55));
+  return static_cast<uint16_t>(*(payload_.first + 53));
+}
+double VescPacketValues::pid_pos_now() const
+{
+  int64_t v = static_cast<int64_t>((static_cast<uint32_t>(*(payload_.first + 54)) << 24) +
+                                   (static_cast<uint32_t>(*(payload_.first + 55)) << 16) +
+                                   (static_cast<uint32_t>(*(payload_.first + 56)) << 8) +
+                                   static_cast<uint32_t>(*(payload_.first + 57)));
+  return static_cast<double>(v) / 1e6; 
+}
+int VescPacketValues::controller_id() const
+{
+  return static_cast<uint16_t>(*(payload_.first + 58));
+}
+double VescPacketValues::NTC_TEMP_MOS1() const
+{
+  int16_t v = static_cast<int16_t>((static_cast<uint16_t>(*(payload_.first + 59)) << 8) +
+                                   static_cast<uint16_t>(*(payload_.first + 60)));
+  return static_cast<double>(v) / 1e1; 
+}
+double VescPacketValues::NTC_TEMP_MOS2() const
+{
+  int16_t v = static_cast<int16_t>((static_cast<uint16_t>(*(payload_.first + 61)) << 8) +
+                                   static_cast<uint16_t>(*(payload_.first + 62)));
+  return static_cast<double>(v) / 1e1; 
+}
+double VescPacketValues::NTC_TEMP_MOS3() const
+{
+  int16_t v = static_cast<int16_t>((static_cast<uint16_t>(*(payload_.first + 63)) << 8) +
+                                   static_cast<uint16_t>(*(payload_.first + 64)));
+  return static_cast<double>(v) / 1e1; 
 }
 
 REGISTER_PACKET_TYPE(COMM_GET_VALUES, VescPacketValues)
 
-VescPacketRequestValues::VescPacketRequestValues() :
+VescPacketRequestValues::VescPacketRequestValues() : // i can't understand
   VescPacket("RequestFWVersion", 1, COMM_GET_VALUES)
 {
   VescFrame::CRC crc_calc;
@@ -357,6 +386,23 @@ VescPacketSetServoPos::VescPacketSetServoPos(double servo_pos) :
 
   *(payload_.first + 1) = static_cast<uint8_t>((static_cast<uint16_t>(v) >> 8) & 0xFF);
   *(payload_.first + 2) = static_cast<uint8_t>(static_cast<uint16_t>(v) & 0xFF);
+
+  VescFrame::CRC crc_calc;
+  crc_calc.process_bytes(&(*payload_.first), boost::distance(payload_));
+  uint16_t crc = crc_calc.checksum();
+  *(frame_->end() - 3) = static_cast<uint8_t>(crc >> 8);
+  *(frame_->end() - 2) = static_cast<uint8_t>(crc & 0xFF);
+}
+
+VescPacketSetHandbrake::VescPacketSetHandbrake(double handbrake) :
+  VescPacket("SetHandbrake", 5, COMM_SET_HANDBRAKE)
+{
+  int32_t v = static_cast<int32_t>(handbrake * 1000.0);
+
+  *(payload_.first + 1) = static_cast<uint8_t>((static_cast<uint32_t>(v) >> 24) & 0xFF);
+  *(payload_.first + 2) = static_cast<uint8_t>((static_cast<uint32_t>(v) >> 16) & 0xFF);
+  *(payload_.first + 3) = static_cast<uint8_t>((static_cast<uint32_t>(v) >> 8) & 0xFF);
+  *(payload_.first + 4) = static_cast<uint8_t>(static_cast<uint32_t>(v) & 0xFF);
 
   VescFrame::CRC crc_calc;
   crc_calc.process_bytes(&(*payload_.first), boost::distance(payload_));
