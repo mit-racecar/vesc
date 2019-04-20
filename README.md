@@ -1,7 +1,7 @@
 # VESC Drivers
 
 ## Dependencies
-1. ROS
+1. [ROS](http://wiki.ros.org/ROS/Installation)
 2. Manually installed ROS packages `serial` and `ackermann-msgs`
     ```
     sudo apt-get install ros-melodic-serial ros-melodic-ackermann-msgs
