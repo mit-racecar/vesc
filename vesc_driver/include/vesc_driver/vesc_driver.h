@@ -3,11 +3,13 @@
 #ifndef VESC_DRIVER_VESC_DRIVER_H_
 #define VESC_DRIVER_VESC_DRIVER_H_
 
+#include <atomic>
 #include <string>
 
 #include <ros/ros.h>
 #include <std_msgs/Float64.h>
 #include <boost/optional.hpp>
+#include <ackermann_msgs/AckermannDriveStamped.h>
 
 #include "vesc_driver/vesc_interface.h"
 #include "vesc_driver/vesc_packet.h"
@@ -55,7 +57,7 @@ private:
   ros::Subscriber speed_sub_;
   ros::Subscriber position_sub_;
   ros::Subscriber servo_sub_;
-  ros::Timer timer_;
+  ros::SteadyTimer timer_;
 
   // driver modes (possible states)
   typedef enum {
@@ -67,9 +69,22 @@ private:
   driver_mode_t driver_mode_;           ///< driver state machine mode (state)
   int fw_version_major_;                ///< firmware major version reported by vesc
   int fw_version_minor_;                ///< firmware minor version reported by vesc
-public:
+
+  // Whether to allow commands other than speed and steering.
+  bool allow_low_level_commands_;
+
+  // Time of last command, for safety motion profiling
+  std::atomic<double> t_last_command_;
+  // Last speed command, for motion profiling.
+  std::atomic<double> last_speed_command_;
+
+  // Safety profiling.
+  void checkCommandTimeout();
+
   // ROS callbacks
-  void timerCallback(const ros::TimerEvent& event);
+  void ackermannCmdCallback(
+      const ackermann_msgs::AckermannDriveStamped::ConstPtr& cmd);
+  void timerCallback(const ros::SteadyTimerEvent& event);
   void dutyCycleCallback(const std_msgs::Float64::ConstPtr& duty_cycle);
   void currentCallback(const std_msgs::Float64::ConstPtr& current);
   void brakeCallback(const std_msgs::Float64::ConstPtr& brake);

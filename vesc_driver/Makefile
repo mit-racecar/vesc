@@ -9,7 +9,7 @@ all: build/CMakeLists.txt.copy
 clean:
 	rm -rf bin lib build msg_gen
 
-build/CMakeLists.txt.copy: build CMakeLists.txt Makefile
+build/CMakeLists.txt.copy: build CMakeLists.txt Makefile manifest.xml
 	cd build && cmake -DCMAKE_BUILD_TYPE=$(build_type) ..
 	cp CMakeLists.txt build/CMakeLists.txt.copy
 

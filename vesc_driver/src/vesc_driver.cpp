@@ -2,12 +2,14 @@
 
 #include "vesc_driver/vesc_driver.h"
 
+#include <atomic>
 #include <cassert>
 #include <cmath>
 #include <sstream>
 
 #include <boost/bind.hpp>
 #include <vesc_driver/VescStateStamped.h>
+#include <ackermann_msgs/AckermannDriveStamped.h>
 
 static const bool kDebug = false;
 
@@ -16,14 +18,21 @@ namespace vesc_driver
 
 VescDriver::VescDriver(ros::NodeHandle nh,
                        ros::NodeHandle private_nh) :
-  vesc_(std::string(),
-        boost::bind(&VescDriver::vescPacketCallback, this, _1),
-        boost::bind(&VescDriver::vescErrorCallback, this, _1)),
-  duty_cycle_limit_(private_nh, "duty_cycle", -1.0, 1.0), current_limit_(private_nh, "current"),
-  brake_limit_(private_nh, "brake"), speed_limit_(private_nh, "speed"),
-  position_limit_(private_nh, "position"), servo_limit_(private_nh, "servo", 0.0, 1.0),
-  driver_mode_(MODE_INITIALIZING), fw_version_major_(-1), fw_version_minor_(-1)
-{
+    vesc_(std::string(),
+          boost::bind(&VescDriver::vescPacketCallback, this, _1),
+          boost::bind(&VescDriver::vescErrorCallback, this, _1)),
+    duty_cycle_limit_(private_nh, "duty_cycle", -1.0, 1.0),
+    current_limit_(private_nh, "current"),
+    brake_limit_(private_nh, "brake"),
+    speed_limit_(private_nh, "speed"),
+    position_limit_(private_nh, "position"),
+    servo_limit_(private_nh, "servo", 0.0, 1.0),
+    driver_mode_(MODE_INITIALIZING),
+    fw_version_major_(-1),
+    fw_version_minor_(-1),
+    allow_low_level_commands_(false),
+    t_last_command_(0),
+    last_speed_command_(0) {
   // get vesc serial port address
   std::string port;
   if (!private_nh.getParam("port", port)) {
@@ -32,6 +41,11 @@ VescDriver::VescDriver(ros::NodeHandle nh,
     return;
   }
 
+  // This is an optional parameter.
+  if (!private_nh.getParam("allow_low_level_commands_",
+                           allow_low_level_commands_)) {
+    allow_low_level_commands_ = false;
+  }
   // attempt to connect to the serial port
   try {
     if (kDebug) printf("CONNECT\n");
@@ -61,10 +75,33 @@ VescDriver::VescDriver(ros::NodeHandle nh,
 
   if (kDebug) printf("TIMER START\n");
   // create a 50Hz timer, used for state machine & polling VESC telemetry
-  timer_ = nh.createTimer(ros::Duration(0.02),
-                          &VescDriver::timerCallback,
-                          this);
+  timer_ = nh.createSteadyTimer(ros::WallDuration(0.02),
+                                &VescDriver::timerCallback,
+                                this);
   if (kDebug) printf("DONE INIT\n");
+}
+
+void VescDriver::checkCommandTimeout() {
+  static const double kTimeout = 0.5;
+  static const double kDecelRate = 1000;
+  const double t_now = ros::WallTime::now().toSec();
+  if (t_now > t_last_command_ + kTimeout) {
+    printf("Safety engaged.\n");
+    double speed = last_speed_command_;
+    if (speed != 0) {
+      if (fabs(speed > kDecelRate)) {
+        if (speed > 0.0) {
+          speed = speed - kDecelRate;
+        } else {
+          speed = speed + kDecelRate;
+        }
+      } else {
+        speed = 0;
+      }
+      vesc_.setSpeed(speed);
+      last_speed_command_ = speed;
+    }
+  }
 }
 
   /* TODO or TO-THINKABOUT LIST
@@ -80,9 +117,10 @@ VescDriver::VescDriver(ros::NodeHandle nh,
     - try to predict vesc bounds (from vesc config) and command detect bounds errors
   */
 
-void VescDriver::timerCallback(const ros::TimerEvent& event)
+void VescDriver::timerCallback(const ros::SteadyTimerEvent& event)
 {
   if (kDebug) printf("TIMER CALLBACK\n");
+  checkCommandTimeout();
   // VESC interface should not unexpectedly disconnect, but test for it anyway
   if (!vesc_.isConnected()) {
     ROS_FATAL("Unexpectedly disconnected from serial port.");
@@ -164,6 +202,10 @@ void VescDriver::vescErrorCallback(const std::string& error)
  */
 void VescDriver::dutyCycleCallback(const std_msgs::Float64::ConstPtr& duty_cycle)
 {
+  if (!allow_low_level_commands_) {
+    ROS_ERROR_ONCE("Low-level commands disabled");
+    return;
+  }
   if (driver_mode_ == MODE_OPERATING) {
     vesc_.setDutyCycle(duty_cycle_limit_.clip(duty_cycle->data));
   }
@@ -176,6 +218,10 @@ void VescDriver::dutyCycleCallback(const std_msgs::Float64::ConstPtr& duty_cycle
  */
 void VescDriver::currentCallback(const std_msgs::Float64::ConstPtr& current)
 {
+  if (!allow_low_level_commands_) {
+    ROS_ERROR_ONCE("Low-level commands disabled");
+    return;
+  }
   if (driver_mode_ == MODE_OPERATING) {
     vesc_.setCurrent(current_limit_.clip(current->data));
   }
@@ -188,6 +234,10 @@ void VescDriver::currentCallback(const std_msgs::Float64::ConstPtr& current)
  */
 void VescDriver::brakeCallback(const std_msgs::Float64::ConstPtr& brake)
 {
+  if (!allow_low_level_commands_) {
+    ROS_ERROR_ONCE("Low-level commands disabled");
+    return;
+  }
   if (driver_mode_ == MODE_OPERATING) {
     vesc_.setBrake(brake_limit_.clip(brake->data));
   }
@@ -204,6 +254,8 @@ void VescDriver::speedCallback(const std_msgs::Float64::ConstPtr& speed)
   if (kDebug) printf("Desired speed: %f\n", speed->data);
   if (driver_mode_ == MODE_OPERATING) {
     vesc_.setSpeed(speed_limit_.clip(speed->data));
+    t_last_command_ = ros::WallTime::now().toSec();
+    last_speed_command_ = speed->data;
   }
 }
 
@@ -213,6 +265,10 @@ void VescDriver::speedCallback(const std_msgs::Float64::ConstPtr& speed)
  */
 void VescDriver::positionCallback(const std_msgs::Float64::ConstPtr& position)
 {
+  if (!allow_low_level_commands_) {
+    ROS_ERROR_ONCE("Low-level commands disabled");
+    return;
+  }
   if (driver_mode_ == MODE_OPERATING) {
     // ROS uses radians but VESC seems to use degrees. Convert to degrees.
     double position_deg = position_limit_.clip(position->data) * 180.0 / M_PI;
@@ -233,6 +289,15 @@ void VescDriver::servoCallback(const std_msgs::Float64::ConstPtr& servo)
     servo_sensor_msg->data = servo_clipped;
     servo_sensor_pub_.publish(servo_sensor_msg);
   }
+}
+
+/**
+ * @param cmd Ackermann steering command.
+ */
+void VescDriver::ackermannCmdCallback(
+  const ackermann_msgs::AckermannDriveStamped::ConstPtr& cmd) {
+  fprintf(stderr, "UNIMPLEMENTED\n");
+  exit(1);
 }
 
 VescDriver::CommandLimit::CommandLimit(const ros::NodeHandle& nh, const std::string& str,
