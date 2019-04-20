@@ -17,7 +17,6 @@
   <depend package="std_msgs"/>
   <depend package="nodelet"/>
   <depend package="pluginlib"/>
-  <depend package="vesc_msgs"/>
   <depend package="serial"/>
 
   <export>

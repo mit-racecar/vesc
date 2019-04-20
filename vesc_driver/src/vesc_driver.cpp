@@ -9,6 +9,8 @@
 #include <boost/bind.hpp>
 #include <vesc_driver/VescStateStamped.h>
 
+static const bool kDebug = false;
+
 namespace vesc_driver
 {
 
@@ -32,6 +34,7 @@ VescDriver::VescDriver(ros::NodeHandle nh,
 
   // attempt to connect to the serial port
   try {
+    if (kDebug) printf("CONNECT\n");
     vesc_.connect(port);
   }
   catch (SerialException e) {
@@ -39,7 +42,7 @@ VescDriver::VescDriver(ros::NodeHandle nh,
     ros::shutdown();
     return;
   }
-
+  if (kDebug) printf("CONNECTED\n");
   // create vesc state (telemetry) publisher
   state_pub_ = nh.advertise<vesc_driver::VescStateStamped>("sensors/core", 10);
 
@@ -56,8 +59,12 @@ VescDriver::VescDriver(ros::NodeHandle nh,
   position_sub_ = nh.subscribe("commands/motor/position", 10, &VescDriver::positionCallback, this);
   servo_sub_ = nh.subscribe("commands/servo/position", 10, &VescDriver::servoCallback, this);
 
+  if (kDebug) printf("TIMER START\n");
   // create a 50Hz timer, used for state machine & polling VESC telemetry
-  timer_ = nh.createTimer(ros::Duration(1.0/50.0), &VescDriver::timerCallback, this);
+  timer_ = nh.createTimer(ros::Duration(0.02),
+                          &VescDriver::timerCallback,
+                          this);
+  if (kDebug) printf("DONE INIT\n");
 }
 
   /* TODO or TO-THINKABOUT LIST
@@ -75,6 +82,7 @@ VescDriver::VescDriver(ros::NodeHandle nh,
 
 void VescDriver::timerCallback(const ros::TimerEvent& event)
 {
+  if (kDebug) printf("TIMER CALLBACK\n");
   // VESC interface should not unexpectedly disconnect, but test for it anyway
   if (!vesc_.isConnected()) {
     ROS_FATAL("Unexpectedly disconnected from serial port.");
@@ -89,6 +97,7 @@ void VescDriver::timerCallback(const ros::TimerEvent& event)
    *  OPERATING - receiving commands from subscriber topics
    */
   if (driver_mode_ == MODE_INITIALIZING) {
+    if (kDebug) printf("INITIALIZING\n");
     // request version number, return packet will update the internal version numbers
     vesc_.requestFWVersion();
     if (fw_version_major_ >= 0 && fw_version_minor_ >= 0) {
@@ -98,10 +107,12 @@ void VescDriver::timerCallback(const ros::TimerEvent& event)
     }
   }
   else if (driver_mode_ == MODE_OPERATING) {
+    if (kDebug) printf("OPERATING\n");
     // poll for vesc state (telemetry)
     vesc_.requestState();
   }
   else {
+    if (kDebug) printf("FAIL: UNKNOWN STATE!\n");
     // unknown mode, how did that happen?
     assert(false && "unknown driver mode");
   }
@@ -190,6 +201,7 @@ void VescDriver::brakeCallback(const std_msgs::Float64::ConstPtr& brake)
  */
 void VescDriver::speedCallback(const std_msgs::Float64::ConstPtr& speed)
 {
+  if (kDebug) printf("Desired speed: %f\n", speed->data);
   if (driver_mode_ == MODE_OPERATING) {
     vesc_.setSpeed(speed_limit_.clip(speed->data));
   }
