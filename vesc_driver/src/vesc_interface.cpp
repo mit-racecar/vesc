@@ -14,6 +14,8 @@
 
 #include "vesc_driver/vesc_packet_factory.h"
 
+
+
 namespace vesc_driver
 {
 
@@ -168,9 +170,16 @@ void VescInterface::connect(const std::string& port)
 
   // start up a monitoring thread
   impl_->rx_thread_run_ = true;
-  int result =
-    pthread_create(&impl_->rx_thread_, NULL, &VescInterface::Impl::rxThreadHelper, impl_.get());
-  assert(0 == result);
+  int result = pthread_create(&impl_->rx_thread_,
+                              NULL,
+                              &VescInterface::Impl::rxThreadHelper,
+                              impl_.get());
+  if (result != 0) {
+    fprintf(stderr,
+            "ERROR: pthread_create failed with error code %d\n",
+            result);
+    exit(1);
+  }
 }
 
 void VescInterface::disconnect()
@@ -181,8 +190,12 @@ void VescInterface::disconnect()
     // bring down read thread
     impl_->rx_thread_run_ = false;
     int result = pthread_join(impl_->rx_thread_, NULL);
-    assert(0 == result);
-
+    if (result != 0) {
+      fprintf(stderr,
+              "ERROR: pthread_join failed with error code %d\n",
+              result);
+      exit(1);
+    }
     impl_->serial_.close();
   }
 }

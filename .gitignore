@@ -5,3 +5,5 @@
 **\bin
 **\build
 **\lib
+**\msg_gen
+vesc_driver/src/vesc_driver/

@@ -7,7 +7,7 @@
 #include <sstream>
 
 #include <boost/bind.hpp>
-#include <vesc_msgs/VescStateStamped.h>
+#include <vesc_driver/VescStateStamped.h>
 
 namespace vesc_driver
 {
@@ -41,7 +41,7 @@ VescDriver::VescDriver(ros::NodeHandle nh,
   }
 
   // create vesc state (telemetry) publisher
-  state_pub_ = nh.advertise<vesc_msgs::VescStateStamped>("sensors/core", 10);
+  state_pub_ = nh.advertise<vesc_driver::VescStateStamped>("sensors/core", 10);
 
   // since vesc state does not include the servo position, publish the commanded
   // servo position as a "sensor"
@@ -113,7 +113,8 @@ void VescDriver::vescPacketCallback(const boost::shared_ptr<VescPacket const>& p
     boost::shared_ptr<VescPacketValues const> values =
       boost::dynamic_pointer_cast<VescPacketValues const>(packet);
 
-    vesc_msgs::VescStateStamped::Ptr state_msg(new vesc_msgs::VescStateStamped);
+    vesc_driver::VescStateStamped::Ptr state_msg(
+        new vesc_driver::VescStateStamped);
     state_msg->header.stamp = ros::Time::now();
     state_msg->state.voltage_input = values->v_in();
     state_msg->state.temperature_pcb = values->temp_pcb();
@@ -152,7 +153,7 @@ void VescDriver::vescErrorCallback(const std::string& error)
  */
 void VescDriver::dutyCycleCallback(const std_msgs::Float64::ConstPtr& duty_cycle)
 {
-  if (driver_mode_ = MODE_OPERATING) {
+  if (driver_mode_ == MODE_OPERATING) {
     vesc_.setDutyCycle(duty_cycle_limit_.clip(duty_cycle->data));
   }
 }
@@ -164,7 +165,7 @@ void VescDriver::dutyCycleCallback(const std_msgs::Float64::ConstPtr& duty_cycle
  */
 void VescDriver::currentCallback(const std_msgs::Float64::ConstPtr& current)
 {
-  if (driver_mode_ = MODE_OPERATING) {
+  if (driver_mode_ == MODE_OPERATING) {
     vesc_.setCurrent(current_limit_.clip(current->data));
   }
 }
@@ -176,7 +177,7 @@ void VescDriver::currentCallback(const std_msgs::Float64::ConstPtr& current)
  */
 void VescDriver::brakeCallback(const std_msgs::Float64::ConstPtr& brake)
 {
-  if (driver_mode_ = MODE_OPERATING) {
+  if (driver_mode_ == MODE_OPERATING) {
     vesc_.setBrake(brake_limit_.clip(brake->data));
   }
 }
@@ -189,7 +190,7 @@ void VescDriver::brakeCallback(const std_msgs::Float64::ConstPtr& brake)
  */
 void VescDriver::speedCallback(const std_msgs::Float64::ConstPtr& speed)
 {
-  if (driver_mode_ = MODE_OPERATING) {
+  if (driver_mode_ == MODE_OPERATING) {
     vesc_.setSpeed(speed_limit_.clip(speed->data));
   }
 }
@@ -200,7 +201,7 @@ void VescDriver::speedCallback(const std_msgs::Float64::ConstPtr& speed)
  */
 void VescDriver::positionCallback(const std_msgs::Float64::ConstPtr& position)
 {
-  if (driver_mode_ = MODE_OPERATING) {
+  if (driver_mode_ == MODE_OPERATING) {
     // ROS uses radians but VESC seems to use degrees. Convert to degrees.
     double position_deg = position_limit_.clip(position->data) * 180.0 / M_PI;
     vesc_.setPosition(position_deg);
@@ -212,7 +213,7 @@ void VescDriver::positionCallback(const std_msgs::Float64::ConstPtr& position)
  */
 void VescDriver::servoCallback(const std_msgs::Float64::ConstPtr& servo)
 {
-  if (driver_mode_ = MODE_OPERATING) {
+  if (driver_mode_ == MODE_OPERATING) {
     double servo_clipped(servo_limit_.clip(servo->data));
     vesc_.setServo(servo_clipped);
     // publish clipped servo value as a "sensor"
