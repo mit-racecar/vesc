@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package>
+  <name>vesc_driver</name>
+  <version>0.0.1</version>
+  <description>
+    ROS device driver for the Vedder VESC open source motor driver.
+  </description>
+
+  <maintainer email="boulet@ll.mit.edu">Michael T. Boulet</maintainer>
+  <author email="boulet@ll.mit.edu">Michael T. Boulet</author>
+  <license>BSD</license>
+
+  <url>https://github.com/umass-amrl/vesc</url>
+
+
+  <depend package="roscpp"/>
+  <depend package="std_msgs"/>
+  <depend package="nodelet"/>
+  <depend package="pluginlib"/>
+  <depend package="nodelet"/>
+  <depend package="pluginlib"/>
+  <depend package="roscpp"/>
+  <depend package="std_msgs"/>
+  <depend package="vesc_msgs"/>
+  <depend package="serial"/>
+
+  <export>
+    <nodelet plugin="${prefix}/vesc_driver_nodelet.xml"/>
+  </export>
+
+</package>
