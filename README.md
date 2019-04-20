@@ -7,9 +7,9 @@
 
 ## Dependencies
 1. [ROS](http://wiki.ros.org/ROS/Installation)
-2. Manually install ROS packages `serial` and `ackermann-msgs` :
+2. Install ROS packages `serial`, `ackermann-msgs`, and `tf` :
     ```
-    sudo apt-get install ros-melodic-serial ros-melodic-ackermann-msgs
+    sudo apt-get install ros-melodic-serial ros-melodic-ackermann-msgs ros-melodic-tf
     ```
     
 ## Build
