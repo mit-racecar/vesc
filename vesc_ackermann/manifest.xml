@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package>
+  <name>vesc_ackermann</name>
+  <version>0.0.1</version>
+  <description>
+    Translate between VESC messages and ROS ackermann and odometry messages.
+  </description>
+
+  <maintainer email="joydeepb@cs.umass.edu">Joydeep Biswas</maintainer>
+  <author email="boulet@ll.mit.edu">Michael T. Boulet</author>
+  <license>BSD</license>
+
+  <url>https://github.com/umass-amrl/vesc</url>
+
+
+  <depend package="roscpp"/>
+  <depend package="std_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="vesc_msgs"/>
+  <depend package="nav_msgs"/>
+  <depend package="ackermann_msgs"/>
+  <depend package="nodelet"/>
+  <depend package="pluginlib"/>
+  <depend package="tf"/>
+
+  <export>
+    <nodelet plugin="${prefix}/vesc_ackermann_nodelet.xml"/>
+  </export>
+
+</package>
