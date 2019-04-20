@@ -1,4 +1,5 @@
 # -*- mode: gitignore; -*-
 *~
 \#*\#
-
+*build*
+*kdev4*
