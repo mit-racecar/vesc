@@ -114,6 +114,7 @@ void* VescInterface::Impl::rxThread(void)
     }
 
   }
+  return NULL;
 }
 
 

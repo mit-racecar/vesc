@@ -12,11 +12,7 @@ SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 ## Build ##
 ###########
 
-include_directories(
-  include
-  ${Boost_INCLUDE_DIRS}
-  ${catkin_INCLUDE_DIRS}
-)
+include_directories(include)
 
 SET(libs roslib roscpp)
 

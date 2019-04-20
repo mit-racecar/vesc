@@ -17,10 +17,6 @@
   <depend package="std_msgs"/>
   <depend package="nodelet"/>
   <depend package="pluginlib"/>
-  <depend package="nodelet"/>
-  <depend package="pluginlib"/>
-  <depend package="roscpp"/>
-  <depend package="std_msgs"/>
   <depend package="vesc_msgs"/>
   <depend package="serial"/>
 
