@@ -1,9 +1,4 @@
-# VESC Drivers
-
-## Overview
-1. `vesc_msgs`: ROS message definition for VESC feedback.
-1. `vesc_driver`: Core VESC driver. Communicates with the VESC over USB-serial.
-1. `vesc_ackermann`: Translates Ackermann steering commands to VESC commands, and VESC feedback to odometry.
+# VESC ROS Driver
 
 ## Dependencies
 1. [ROS](http://wiki.ros.org/ROS/Installation)
@@ -11,9 +6,20 @@
     ```
     sudo apt-get install ros-melodic-serial ros-melodic-ackermann-msgs ros-melodic-tf
     ```
-    
+
 ## Build
-In each subdir, run `make`, in the following order:
-1. vesc_msgs
-1. vesc_driver
-1. vesc_ackermann
+1. Add the project path to `ROS_PACKAGE_PATH`
+1. Run `make`
+
+## Run
+1. To run the driver:
+    ```
+    roslaunch vesc vesc_driver_node.launch
+    ```
+1. A keyboard teleop tool is also available:
+    ```
+    rosrun vesc keyboard_teleop.py
+    ```
+
+## Configuration
+All config parameters are included in `config/vesc.yaml`.

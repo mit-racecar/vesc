@@ -1,7 +1,7 @@
 <!-- -*- mode: XML -*- -->
 <launch>
 
-  <arg name="node_name" default="vesc_driver" />
+  <arg name="node_name" default="vesc" />
 
   <!-- Optionally launch in GDB, for debugging -->
   <arg name="debug" default="false" />
@@ -9,10 +9,10 @@
   <arg unless="$(arg debug)" name="launch_prefix" value="" />
 
   <!-- VESC driver parameters -->
-  <rosparam command="load" file="$(find vesc_driver)/config/vesc.yaml" />
+  <rosparam command="load" file="$(find vesc)/config/vesc.yaml" />
 
   <!-- VESC driver node -->
-  <node pkg="vesc_driver" type="vesc_driver_node" name="$(arg node_name)"
+  <node pkg="vesc" type="vesc_driver_node" name="$(arg node_name)"
         output="screen" launch-prefix="$(arg launch_prefix)" >
   </node>
 

@@ -8,7 +8,7 @@
 #include <sstream>
 
 #include <boost/bind.hpp>
-#include <vesc_driver/VescStateStamped.h>
+#include <vesc/VescStateStamped.h>
 #include <ackermann_msgs/AckermannDriveStamped.h>
 
 static const bool kDebug = false;
@@ -88,7 +88,7 @@ VescDriver::VescDriver(ros::NodeHandle nh,
   }
   if (kDebug) printf("CONNECTED\n");
   // create vesc state (telemetry) publisher
-  state_pub_ = nh.advertise<vesc_driver::VescStateStamped>("sensors/core", 10);
+  state_pub_ = nh.advertise<vesc::VescStateStamped>("sensors/core", 10);
 
   // since vesc state does not include the servo position, publish the commanded
   // servo position as a "sensor"
@@ -159,8 +159,10 @@ void VescDriver::checkCommandTimeout() {
     - try to predict vesc bounds (from vesc config) and command detect bounds errors
   */
 
-void VescDriver::timerCallback(const ros::SteadyTimerEvent& event)
-{
+void VescDriver::timerCallback(const ros::SteadyTimerEvent& event) {
+  static const double kMaxInitPeriod = 2.0;
+  static const double kTStart = ros::WallTime::now().toSec();
+
   if (kDebug) printf("TIMER CALLBACK\n");
   checkCommandTimeout();
   // VESC interface should not unexpectedly disconnect, but test for it anyway
@@ -177,6 +179,11 @@ void VescDriver::timerCallback(const ros::SteadyTimerEvent& event)
    *  OPERATING - receiving commands from subscriber topics
    */
   if (driver_mode_ == MODE_INITIALIZING) {
+    if (ros::WallTime::now().toSec() > kTStart + kMaxInitPeriod) {
+      ROS_FATAL("FAIL: Timed out while trying to initialize VESC.");
+      ros::shutdown();
+      return;
+    }
     if (kDebug) printf("INITIALIZING\n");
     // request version number, return packet will update the internal version numbers
     vesc_.requestFWVersion();
@@ -204,8 +211,7 @@ void VescDriver::vescPacketCallback(const boost::shared_ptr<VescPacket const>& p
     boost::shared_ptr<VescPacketValues const> values =
       boost::dynamic_pointer_cast<VescPacketValues const>(packet);
 
-    vesc_driver::VescStateStamped::Ptr state_msg(
-        new vesc_driver::VescStateStamped);
+    vesc::VescStateStamped::Ptr state_msg(new vesc::VescStateStamped);
     state_msg->header.stamp = ros::Time::now();
     state_msg->state.voltage_input = values->v_in();
     state_msg->state.temperature_pcb = values->temp_pcb();

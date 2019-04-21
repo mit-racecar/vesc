@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(vesc_driver)
+project(vesc)
 
 INCLUDE($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 

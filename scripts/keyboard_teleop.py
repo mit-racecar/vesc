@@ -36,6 +36,7 @@ def vels(speed,turn):
   return "currently:\tspeed %s\tturn %s " % (speed,turn)
 
 if __name__=="__main__":
+  print banner
   settings = termios.tcgetattr(sys.stdin)
   pub = rospy.Publisher('commands/ackermann',
                         AckermannDriveStamped,

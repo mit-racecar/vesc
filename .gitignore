@@ -2,8 +2,9 @@
 *~
 \#*\#
 *kdev4*
-**\bin
-**\build
-**\lib
-**\msg_gen
+bin
+build
+lib
+msg_gen
+src/vesc
 vesc_driver/src/vesc_driver/
