@@ -31,11 +31,12 @@ private:
   void vescErrorCallback(const std::string& error);
 
   // limits on VESC commands
-  struct CommandLimit
-  {
-    CommandLimit(const ros::NodeHandle& nh, const std::string& str,
-                 const boost::optional<double>& min_lower = boost::optional<double>(),
-                 const boost::optional<double>& max_upper = boost::optional<double>());
+  struct CommandLimit {
+    CommandLimit(
+        const ros::NodeHandle& nh,
+        const std::string& str,
+        const boost::optional<double>& min_lower = boost::optional<double>(),
+        const boost::optional<double>& max_upper = boost::optional<double>());
     double clip(double value);
     std::string name;
     boost::optional<double> lower;
@@ -55,6 +56,7 @@ private:
   ros::Subscriber current_sub_;
   ros::Subscriber brake_sub_;
   ros::Subscriber speed_sub_;
+  ros::Subscriber ackermann_sub_;
   ros::Subscriber position_sub_;
   ros::Subscriber servo_sub_;
   ros::SteadyTimer timer_;
@@ -65,10 +67,18 @@ private:
     MODE_OPERATING
   } driver_mode_t;
 
-  // other variables
-  driver_mode_t driver_mode_;           ///< driver state machine mode (state)
-  int fw_version_major_;                ///< firmware major version reported by vesc
-  int fw_version_minor_;                ///< firmware minor version reported by vesc
+  // driver state machine mode (state)
+  driver_mode_t driver_mode_;
+  // firmware major version reported by vesc
+  int fw_version_major_;
+  // firmware minor version reported by vesc
+  int fw_version_minor_;
+
+  // Conversion parameters.
+  double speed_to_erpm_gain_;
+  double speed_to_erpm_offset_;
+  double steering_to_servo_gain_;
+  double steering_to_servo_offset_;
 
   // Whether to allow commands other than speed and steering.
   bool allow_low_level_commands_;

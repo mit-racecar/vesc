@@ -13,6 +13,19 @@
 
 static const bool kDebug = false;
 
+namespace {
+
+template <typename T>
+inline bool getRequiredParam(const ros::NodeHandle& nh,
+                             std::string name,
+                             T& value) {
+  if (nh.getParam(name, value)) return true;
+  ROS_FATAL("AckermannToVesc: Parameter %s is required.", name.c_str());
+  return false;
+}
+
+}  // namespace
+
 namespace vesc_driver
 {
 
@@ -27,7 +40,7 @@ VescDriver::VescDriver(ros::NodeHandle nh,
     speed_limit_(private_nh, "speed"),
     position_limit_(private_nh, "position"),
     servo_limit_(private_nh, "servo", 0.0, 1.0),
-    driver_mode_(MODE_INITIALIZING),
+    driver_mode_(MODE_OPERATING),
     fw_version_major_(-1),
     fw_version_minor_(-1),
     allow_low_level_commands_(false),
@@ -46,12 +59,29 @@ VescDriver::VescDriver(ros::NodeHandle nh,
                            allow_low_level_commands_)) {
     allow_low_level_commands_ = false;
   }
+
+  // Load conversion parameters.
+  if (!getRequiredParam(private_nh,
+                        "speed_to_erpm_gain",
+                        speed_to_erpm_gain_) ||
+      !getRequiredParam(private_nh,
+                        "speed_to_erpm_offset",
+                        speed_to_erpm_offset_) ||
+      !getRequiredParam(private_nh,
+                        "steering_angle_to_servo_gain",
+                        steering_to_servo_gain_) ||
+      !getRequiredParam(private_nh,
+                        "steering_angle_to_servo_offset",
+                        steering_to_servo_offset_)) {
+    ros::shutdown();
+    return;
+  }
+
   // attempt to connect to the serial port
   try {
     if (kDebug) printf("CONNECT\n");
     vesc_.connect(port);
-  }
-  catch (SerialException e) {
+  } catch (SerialException e) {
     ROS_FATAL("Failed to connect to the VESC, %s.", e.what());
     ros::shutdown();
     return;
@@ -62,16 +92,28 @@ VescDriver::VescDriver(ros::NodeHandle nh,
 
   // since vesc state does not include the servo position, publish the commanded
   // servo position as a "sensor"
-  servo_sensor_pub_ = nh.advertise<std_msgs::Float64>("sensors/servo_position_command", 10);
+  servo_sensor_pub_ =
+      nh.advertise<std_msgs::Float64>("sensors/servo_position_command", 10);
 
-  // subscribe to motor and servo command topics
-  duty_cycle_sub_ = nh.subscribe("commands/motor/duty_cycle", 10,
-                                 &VescDriver::dutyCycleCallback, this);
-  current_sub_ = nh.subscribe("commands/motor/current", 10, &VescDriver::currentCallback, this);
-  brake_sub_ = nh.subscribe("commands/motor/brake", 10, &VescDriver::brakeCallback, this);
-  speed_sub_ = nh.subscribe("commands/motor/speed", 10, &VescDriver::speedCallback, this);
-  position_sub_ = nh.subscribe("commands/motor/position", 10, &VescDriver::positionCallback, this);
-  servo_sub_ = nh.subscribe("commands/servo/position", 10, &VescDriver::servoCallback, this);
+  // create ackermann subscriber.
+  ackermann_sub_ = nh.subscribe(
+      "commands/ackermann", 10, &VescDriver::ackermannCmdCallback, this);
+
+  if (allow_low_level_commands_) {
+    ROS_INFO("Low-level commands enabled.");
+    duty_cycle_sub_ = nh.subscribe(
+        "commands/motor/duty_cycle", 10,&VescDriver::dutyCycleCallback, this);
+    current_sub_ = nh.subscribe(
+        "commands/motor/current", 10, &VescDriver::currentCallback, this);
+    brake_sub_ = nh.subscribe(
+        "commands/motor/brake", 10, &VescDriver::brakeCallback, this);
+    position_sub_ = nh.subscribe(
+        "commands/motor/position", 10, &VescDriver::positionCallback, this);
+    speed_sub_ = nh.subscribe(
+        "commands/motor/speed", 10, &VescDriver::speedCallback, this);
+    servo_sub_ = nh.subscribe(
+        "commands/servo/position", 10, &VescDriver::servoCallback, this);
+  }
 
   if (kDebug) printf("TIMER START\n");
   // create a 50Hz timer, used for state machine & polling VESC telemetry
@@ -86,9 +128,9 @@ void VescDriver::checkCommandTimeout() {
   static const double kDecelRate = 1000;
   const double t_now = ros::WallTime::now().toSec();
   if (t_now > t_last_command_ + kTimeout) {
-    printf("Safety engaged.\n");
     double speed = last_speed_command_;
     if (speed != 0) {
+      printf("Safety engaged.\n");
       if (fabs(speed > kDecelRate)) {
         if (speed > 0.0) {
           speed = speed - kDecelRate;
@@ -202,10 +244,6 @@ void VescDriver::vescErrorCallback(const std::string& error)
  */
 void VescDriver::dutyCycleCallback(const std_msgs::Float64::ConstPtr& duty_cycle)
 {
-  if (!allow_low_level_commands_) {
-    ROS_ERROR_ONCE("Low-level commands disabled");
-    return;
-  }
   if (driver_mode_ == MODE_OPERATING) {
     vesc_.setDutyCycle(duty_cycle_limit_.clip(duty_cycle->data));
   }
@@ -218,10 +256,6 @@ void VescDriver::dutyCycleCallback(const std_msgs::Float64::ConstPtr& duty_cycle
  */
 void VescDriver::currentCallback(const std_msgs::Float64::ConstPtr& current)
 {
-  if (!allow_low_level_commands_) {
-    ROS_ERROR_ONCE("Low-level commands disabled");
-    return;
-  }
   if (driver_mode_ == MODE_OPERATING) {
     vesc_.setCurrent(current_limit_.clip(current->data));
   }
@@ -234,10 +268,6 @@ void VescDriver::currentCallback(const std_msgs::Float64::ConstPtr& current)
  */
 void VescDriver::brakeCallback(const std_msgs::Float64::ConstPtr& brake)
 {
-  if (!allow_low_level_commands_) {
-    ROS_ERROR_ONCE("Low-level commands disabled");
-    return;
-  }
   if (driver_mode_ == MODE_OPERATING) {
     vesc_.setBrake(brake_limit_.clip(brake->data));
   }
@@ -265,10 +295,6 @@ void VescDriver::speedCallback(const std_msgs::Float64::ConstPtr& speed)
  */
 void VescDriver::positionCallback(const std_msgs::Float64::ConstPtr& position)
 {
-  if (!allow_low_level_commands_) {
-    ROS_ERROR_ONCE("Low-level commands disabled");
-    return;
-  }
   if (driver_mode_ == MODE_OPERATING) {
     // ROS uses radians but VESC seems to use degrees. Convert to degrees.
     double position_deg = position_limit_.clip(position->data) * 180.0 / M_PI;
@@ -296,8 +322,28 @@ void VescDriver::servoCallback(const std_msgs::Float64::ConstPtr& servo)
  */
 void VescDriver::ackermannCmdCallback(
   const ackermann_msgs::AckermannDriveStamped::ConstPtr& cmd) {
-  fprintf(stderr, "UNIMPLEMENTED\n");
-  exit(1);
+  // calc vesc electric RPM (speed)
+  const double erpm =
+      speed_to_erpm_gain_ * cmd->drive.speed + speed_to_erpm_offset_;
+
+  // calc steering angle (servo)
+  const double servo = steering_to_servo_gain_ * cmd->drive.steering_angle +
+    steering_to_servo_offset_;
+
+  if (driver_mode_ == MODE_OPERATING) {
+    // Set speed command.
+    vesc_.setSpeed(speed_limit_.clip(erpm));
+    t_last_command_ = ros::WallTime::now().toSec();
+    last_speed_command_ = erpm;
+
+    // Set servo position command.
+    const double servo_clipped(servo_limit_.clip(servo));
+    vesc_.setServo(servo_clipped);
+    // publish clipped servo value as a "sensor"
+    std_msgs::Float64::Ptr servo_sensor_msg(new std_msgs::Float64);
+    servo_sensor_msg->data = servo_clipped;
+    servo_sensor_pub_.publish(servo_sensor_msg);
+  }
 }
 
 VescDriver::CommandLimit::CommandLimit(const ros::NodeHandle& nh, const std::string& str,
