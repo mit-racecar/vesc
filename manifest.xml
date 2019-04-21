@@ -1,12 +1,12 @@
 <?xml version="1.0"?>
 <package>
-  <name>vesc_driver</name>
+  <name>vesc</name>
   <version>0.0.1</version>
   <description>
     ROS device driver for the Vedder VESC open source motor driver.
   </description>
 
-  <maintainer email="boulet@ll.mit.edu">Michael T. Boulet</maintainer>
+  <maintainer email="joydeepb@cs.umass.edu">Joydeep Biswas</maintainer>
   <author email="boulet@ll.mit.edu">Michael T. Boulet</author>
   <license>BSD</license>
 
