@@ -17,6 +17,7 @@ wheelbase: .25
 
 vesc_driver:
   port: /dev/ttyS0
+  allow_low_level_commands_: false
   # erpm (electrical rpm) = speed_to_erpm_gain * speed (meters / second) +
   #   speed_to_erpm_offset
   # for offset=0. speed_to_erpm_gain =
