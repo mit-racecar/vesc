@@ -62,20 +62,21 @@ if __name__=="__main__":
   rospy.init_node('joystick_teleop')
   rate = rospy.Rate(20) # 20hz
   initJoystick()
+  speed = 1.0
+  turn = 0.25
   while not rospy.is_shutdown():
     readJoystick()
     msg = AckermannDriveStamped();
     msg.header.stamp = rospy.Time.now();
     msg.header.frame_id = "base_link";
 
-
     print("Drive: {:.2f}% Steer: {:.2f}%  Enabled: {}".format(
         drive_joystick, steer_joystick, is_enabled))
-    # TODO: Set up commands using the above variables
-    msg.drive.speed = 0;
+
+    msg.drive.speed = drive_joystick * speed;
     msg.drive.acceleration = 1;
     msg.drive.jerk = 1;
-    msg.drive.steering_angle = 0
+    msg.drive.steering_angle = steer_joystick * turn
     msg.drive.steering_angle_velocity = 1
 
     pub.publish(msg)
