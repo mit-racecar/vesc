@@ -4,7 +4,7 @@
 1. [ROS](http://wiki.ros.org/ROS/Installation)
 2. Install ROS packages `serial`, `ackermann-msgs`, and `tf` :
     ```
-    sudo apt-get install ros-melodic-serial ros-melodic-ackermann-msgs ros-melodic-tf
+    sudo apt-get install ros-melodic-serial ros-melodic-ackermann-msgs ros-melodic-tf python-pygame
     ```
 
 ## Build
