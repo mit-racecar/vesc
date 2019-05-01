@@ -20,7 +20,7 @@ def readJoystick():
   global is_enabled
   pygame.event.pump()
   steer_joystick = -joystick.get_axis(0)
-  drive_joystick = -joystick.get_axis(3)
+  drive_joystick = -joystick.get_axis(4)
   is_enabled = joystick.get_button(4) == 1
 
 
