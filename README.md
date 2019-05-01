@@ -2,7 +2,7 @@
 
 ## Dependencies
 1. [ROS](http://wiki.ros.org/ROS/Installation)
-2. Install ROS packages `serial`, `ackermann-msgs`, and `tf` :
+2. Install ROS packages `serial`, `ackermann-msgs`, `tf`, and the python `pygame` library:
     ```
     sudo apt-get install ros-melodic-serial ros-melodic-ackermann-msgs ros-melodic-tf python-pygame
     ```
