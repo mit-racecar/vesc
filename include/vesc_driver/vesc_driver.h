@@ -51,6 +51,7 @@ private:
 
   // ROS services
   ros::Publisher state_pub_;
+  ros::Publisher odom_pub_;
   ros::Publisher servo_sensor_pub_;
   ros::Subscriber duty_cycle_sub_;
   ros::Subscriber current_sub_;
@@ -79,6 +80,7 @@ private:
   double speed_to_erpm_offset_;
   double steering_to_servo_gain_;
   double steering_to_servo_offset_;
+  double wheel_base_;
 
   // Whether to allow commands other than speed and steering.
   bool allow_low_level_commands_;
@@ -87,6 +89,8 @@ private:
   std::atomic<double> t_last_command_;
   // Last speed command, for motion profiling.
   std::atomic<double> last_speed_command_;
+  // Last servo angle command
+  double last_steering_angle_;
 
   // Safety profiling.
   void checkCommandTimeout();
@@ -101,6 +105,8 @@ private:
   void speedCallback(const std_msgs::Float64::ConstPtr& speed);
   void positionCallback(const std_msgs::Float64::ConstPtr& position);
   void servoCallback(const std_msgs::Float64::ConstPtr& servo);
+  
+  void updateOdometry(double rpm, double steering_angle);
 };
 
 } // namespace vesc_driver

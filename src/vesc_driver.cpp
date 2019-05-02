@@ -10,6 +10,9 @@
 #include <boost/bind.hpp>
 #include <vesc/VescStateStamped.h>
 #include <ackermann_msgs/AckermannDriveStamped.h>
+#include <nav_msgs/Odometry.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 static const bool kDebug = false;
 
@@ -72,7 +75,10 @@ VescDriver::VescDriver(ros::NodeHandle nh,
                         steering_to_servo_gain_) ||
       !getRequiredParam(private_nh,
                         "steering_angle_to_servo_offset",
-                        steering_to_servo_offset_)) {
+                        steering_to_servo_offset_) || 
+      !getRequiredParam(private_nh,
+                        "wheelbase",
+                        wheel_base_)) {
     ros::shutdown();
     return;
   }
@@ -89,7 +95,9 @@ VescDriver::VescDriver(ros::NodeHandle nh,
   if (kDebug) printf("CONNECTED\n");
   // create vesc state (telemetry) publisher
   state_pub_ = nh.advertise<vesc::VescStateStamped>("sensors/core", 10);
-
+  
+  odom_pub_ = nh.advertise<nav_msgs::Odometry>("odom", 10);
+  
   // since vesc state does not include the servo position, publish the commanded
   // servo position as a "sensor"
   servo_sensor_pub_ =
@@ -205,6 +213,96 @@ void VescDriver::timerCallback(const ros::SteadyTimerEvent& event) {
   }
 }
 
+void VescDriver::updateOdometry(double rpm, double steering_angle) {
+  // TODO: calculate speed based on tachometer as opposed to rpm
+  
+  // Calcuate linear velocity
+  double lin_vel = (rpm - speed_to_erpm_offset_) / speed_to_erpm_gain_;
+  
+  // Calculate angular velocity
+  double turn_radius = 0;
+  double rot_vel = 0;
+  if (steering_angle != 0) {
+    turn_radius = wheel_base_ / tan(steering_angle);
+    rot_vel = lin_vel / turn_radius;
+  }
+
+  static float position_x = 0;
+  static float position_y = 0;
+  static float orientation = 0; // theta
+  static double last_frame_time = ros::Time::now().toSec();
+  ros::Time current_frame_time_ros = ros::Time::now();
+  double current_frame_time = current_frame_time_ros.toSec();
+ 
+  
+  // Update the estimated pose
+  double del_t = current_frame_time - last_frame_time;
+  
+  // Enforce monotonically increasing time stamps
+  if (del_t >= 0) {
+    float del_x = lin_vel * del_t * cos(orientation);
+    float del_y = lin_vel * del_t * sin(orientation);
+    float del_theta = rot_vel * del_t;
+    
+    position_x = position_x + del_x;
+    position_y = position_y + del_y;
+    orientation = orientation + del_theta;
+    // Wraps theta to [-pi, pi]
+    while (orientation > M_PI) {
+      orientation -= 2 * M_PI;
+    }
+    while (orientation < -M_PI) {
+      orientation += 2 * M_PI;
+    }
+   
+    // Create an odometry message
+    nav_msgs::Odometry odom_msg;
+    odom_msg.header.stamp = current_frame_time_ros;
+    odom_msg.header.frame_id = "odom";
+    odom_msg.child_frame_id = "base_link";
+    
+    odom_msg.twist.twist.linear.x = lin_vel; 
+    odom_msg.twist.twist.linear.y = 0;
+    odom_msg.twist.twist.linear.z = 0;
+    odom_msg.twist.twist.angular.x = 0; 
+    odom_msg.twist.twist.angular.y = 0;
+    odom_msg.twist.twist.angular.z = rot_vel;
+    odom_msg.twist.covariance = 
+                  {0.001, 0.0, 0.0, 0.0, 0.0, 0.0, 
+                    0.0, 0.001, 0.0, 0.0, 0.0, 0.0, 
+                    0.0, 0.0, 0.001, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 1000000.0, 0.0, 0.0, 
+                    0.0, 0.0, 0.0, 0.0, 1000000.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.03};
+    
+    odom_msg.pose.pose.position.x = position_x;
+    odom_msg.pose.pose.position.y = position_y;
+    odom_msg.pose.pose.position.z = 0;
+    odom_msg.pose.covariance = 
+                  {0.001, 0.0, 0.0, 0.0, 0.0, 0.0, 
+                    0.0, 0.001, 0.0, 0.0, 0.0, 0.0, 
+                    0.0, 0.0, 1000000.0 , 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 1000000.0, 0.0, 0.0, 
+                    0.0, 0.0, 0.0, 0.0, 1000000.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.03};
+    
+    tf2::Quaternion quat_tf;
+    quat_tf.setRPY( 0, 0,  orientation);
+    geometry_msgs::Quaternion quat_msg;
+    quat_msg = tf2::toMsg(quat_tf);
+    odom_msg.pose.pose.orientation = quat_msg;
+    
+    odom_pub_.publish(odom_msg);
+    
+  } else {
+    ROS_INFO("Odometry messages received out of order.") ;
+  }
+  
+  last_frame_time = current_frame_time;
+  
+  
+}
+
 void VescDriver::vescPacketCallback(const boost::shared_ptr<VescPacket const>& packet)
 {
   if (packet->name() == "Values") {
@@ -228,6 +326,7 @@ void VescDriver::vescPacketCallback(const boost::shared_ptr<VescPacket const>& p
     state_msg->state.fault_code = values->fault_code();
 
     state_pub_.publish(state_msg);
+    updateOdometry(values->rpm(), last_steering_angle_);
   }
   else if (packet->name() == "FWVersion") {
     boost::shared_ptr<VescPacketFWVersion const> fw_version =
@@ -350,6 +449,7 @@ void VescDriver::ackermannCmdCallback(
     servo_sensor_msg->data = servo_clipped;
     servo_sensor_pub_.publish(servo_sensor_msg);
   }
+    last_steering_angle_ = cmd->drive.steering_angle;
 }
 
 VescDriver::CommandLimit::CommandLimit(const ros::NodeHandle& nh, const std::string& str,
