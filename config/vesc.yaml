@@ -36,8 +36,8 @@ vesc:
   current_max: 20.0
   brake_min: -20000.0
   brake_max: 200000.0
-  speed_min: -3250
-  speed_max: 3250
+  speed_min: -16250 # -3250
+  speed_max: 16250 # 3250
   position_min: 0.0
   position_max: 0.0
   servo_min: 0.15

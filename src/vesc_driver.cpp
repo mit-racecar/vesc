@@ -327,6 +327,7 @@ void VescDriver::vescPacketCallback(const boost::shared_ptr<VescPacket const>& p
 
     state_pub_.publish(state_msg);
     updateOdometry(values->rpm(), last_steering_angle_);
+    
   }
   else if (packet->name() == "FWVersion") {
     boost::shared_ptr<VescPacketFWVersion const> fw_version =

@@ -11,18 +11,20 @@ import sys, select, termios, tty
 
 steer_joystick = 0.0
 drive_joystick = 0.0
-is_enabled = False
+is_enabled = True
+turbo_mode = False
 
 def readJoystick():
   global joystick
   global steer_joystick
   global drive_joystick
   global is_enabled
+  global turbo_mode
   pygame.event.pump()
   steer_joystick = -joystick.get_axis(0)
-  drive_joystick = -joystick.get_axis(4)
-  is_enabled = joystick.get_button(4) == 1
-
+  drive_joystick = -joystick.get_axis(4) # 4 for xbox
+  #is_enabled = joystick.get_button(4) == 1
+  turbo_mode = joystick.get_button(4) == 1	
 
 def initJoystick():
   global joystick
@@ -56,16 +58,23 @@ if __name__=="__main__":
   global steer_joystick
   global drive_joystick
   global is_enabled
+  global turbo_mode
   pub = rospy.Publisher('commands/ackermann',
                       AckermannDriveStamped,
                       queue_size=5)
   rospy.init_node('joystick_teleop')
   rate = rospy.Rate(20) # 20hz
   initJoystick()
-  speed = 1.0
+  speed = 1.0 # 1.0
+
   turn = 0.25
   while not rospy.is_shutdown():
     readJoystick()
+    if turbo_mode:
+      speed = 2.0
+    else:
+      speed = 1.0
+
     msg = AckermannDriveStamped();
     msg.header.stamp = rospy.Time.now();
     msg.header.frame_id = "base_link";
