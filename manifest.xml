@@ -18,7 +18,7 @@
   <depend package="pluginlib"/>
   <depend package="serial"/>
   <depend package="ackermann_msgs"/>
-
+  <depend package="sensor_msgs"/>
 
   <export>
     <nodelet plugin="${prefix}/vesc_driver_nodelet.xml"/>

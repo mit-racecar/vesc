@@ -3,6 +3,7 @@ import rospy
 import pygame
 
 from ackermann_msgs.msg import AckermannDriveStamped
+from sensor_msgs.msg import Joy
 
 import sys, select, termios, tty
 
@@ -11,7 +12,7 @@ import sys, select, termios, tty
 
 steer_joystick = 0.0
 drive_joystick = 0.0
-is_enabled = True
+is_enabled = False
 turbo_mode = False
 
 def readJoystick():
@@ -20,11 +21,25 @@ def readJoystick():
   global drive_joystick
   global is_enabled
   global turbo_mode
+  global pub_joymsg
   pygame.event.pump()
   steer_joystick = -joystick.get_axis(0)
   drive_joystick = -joystick.get_axis(4) # 4 for xbox
-  #is_enabled = joystick.get_button(4) == 1
-  turbo_mode = joystick.get_button(4) == 1	
+  is_enabled = joystick.get_button(4) == 1
+  turbo_mode = joystick.get_axis(5) >= 0.9 # 5 for xbox
+  print("axis0: {}".format(steer_joystick))
+  
+  # Makes the joystick message
+  joy_msg = Joy();
+  joy_msg.header.stamp = rospy.Time.now();
+  joy_msg.header.frame_id = "base_link";
+  
+  for i in range(7): #7
+    joy_msg.axes += [joystick.get_axis(i)]
+  for i in range(10): #10
+    print(type(joy_msg.buttons))
+    joy_msg.buttons += [joystick.get_button(i)]
+  pub_joymsg.publish(joy_msg)
 
 def initJoystick():
   global joystick
@@ -59,8 +74,12 @@ if __name__=="__main__":
   global drive_joystick
   global is_enabled
   global turbo_mode
+  global pub_joymsg
   pub = rospy.Publisher('commands/ackermann',
                       AckermannDriveStamped,
+                      queue_size=5)
+  pub_joymsg = rospy.Publisher('/bluetooth_teleop/joy',
+                      Joy,
                       queue_size=5)
   rospy.init_node('joystick_teleop')
   rate = rospy.Rate(20) # 20hz
@@ -74,7 +93,7 @@ if __name__=="__main__":
       speed = 2.0
     else:
       speed = 1.0
-
+    
     msg = AckermannDriveStamped();
     msg.header.stamp = rospy.Time.now();
     msg.header.frame_id = "base_link";
@@ -88,7 +107,8 @@ if __name__=="__main__":
     msg.drive.steering_angle = steer_joystick * turn
     msg.drive.steering_angle_velocity = 1
 
-    pub.publish(msg)
+    if is_enabled:
+      pub.publish(msg)
     rate.sleep()
 
   msg = AckermannDriveStamped();
