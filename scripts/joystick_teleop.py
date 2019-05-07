@@ -26,18 +26,16 @@ def readJoystick():
   steer_joystick = -joystick.get_axis(0)
   drive_joystick = -joystick.get_axis(4) # 4 for xbox
   is_enabled = joystick.get_button(4) == 1
-  turbo_mode = joystick.get_axis(5) >= 0.9 # 5 for xbox
-  print("axis0: {}".format(steer_joystick))
+  turbo_mode = joystick.get_axis(2) >= 0.9 # 5 for xbox
   
   # Makes the joystick message
   joy_msg = Joy();
   joy_msg.header.stamp = rospy.Time.now();
   joy_msg.header.frame_id = "base_link";
   
-  for i in range(7): #7
+  for i in range(5): #7
     joy_msg.axes += [joystick.get_axis(i)]
   for i in range(10): #10
-    print(type(joy_msg.buttons))
     joy_msg.buttons += [joystick.get_button(i)]
   pub_joymsg.publish(joy_msg)
 
