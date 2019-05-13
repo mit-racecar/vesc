@@ -33,7 +33,7 @@ def readJoystick():
   joy_msg.header.stamp = rospy.Time.now();
   joy_msg.header.frame_id = "base_link";
   
-  for i in range(5): #7
+  for i in range(6): #7
     joy_msg.axes += [joystick.get_axis(i)]
   for i in range(10): #10
     joy_msg.buttons += [joystick.get_button(i)]
