@@ -71,8 +71,8 @@ def readJoystick():
   
   for i in range(6): #7
     joy_msg.axes += [joystick.get_axis(i)]
-    if (joystick.get_axis(i)):
-      last_active_time = time.time()
+    #if (joystick.get_axis(i)):
+    #  last_active_time = time.time()
   for i in range(10): #10
     joy_msg.buttons += [joystick.get_button(i)]
     if (joystick.get_button(i)):
